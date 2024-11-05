@@ -11,6 +11,9 @@ flask-migrate = "*"
 flask-restful = "*"
 flask-bcrypt = "*"
 sqlalchemy-serializer = "*"
+gunicorn = "*"
+psycopg2-binary = "*"
+load-dotenv = "*"
 
 [dev-packages]
 
