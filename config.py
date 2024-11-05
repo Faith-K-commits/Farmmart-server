@@ -10,7 +10,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-@app.rout('/')
+@app.route('/')
 def index():
     return 'Deployed!'
 
