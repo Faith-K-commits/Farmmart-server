@@ -23,16 +23,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Install Node.js and render-cli via npm
-      run: |
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -  
-        sudo apt-get install -y nodejs  
-        sudo npm install -g render-cli
-
-    - name: Add render-cli to PATH
-      run: echo "/home/runner/.npm-global/bin" >> $GITHUB_PATH
-
-    - name: Deploy to Render
+    - name: Trigger Render Deploy
       env:
-        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      run: render deploy --service Farmmart --token $RENDER_API_KEY --engine ejs
+        DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK }}
+      run: |
+        echo "Triggering Render deployment..."
+        curl -X POST $DEPLOY_HOOK_URL
