@@ -27,4 +27,4 @@ jobs:
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       run: |
         pip install render-cli
-        render deploy --service YOUR_SERVICE_NAME --token $RENDER_API_KEY
+        render deploy --service Farmmart --token $RENDER_API_KEY
