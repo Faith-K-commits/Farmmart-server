@@ -24,13 +24,12 @@ jobs:
         pip install -r requirements.txt
     
     - name: Install render-cli
-      run: |
-        curl -fsSL https://cli.render.com/install | sh
-        export PATH=$PATH:/home/runner/.render-cli/bin
+      run: curl -fsSL https://cli.render.com/install | sh
+
+    - name: Add render-cli to PATH
+      run: echo "/home/runner/.render-cli/bin" >> $GITHUB_PATH
 
     - name: Deploy to Render
       env:
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      run: |
-        pip install render-cli
-        render deploy --service Farmmart --token $RENDER_API_KEY
+      run: render deploy --service Farmmart --token $RENDER_API_KEY
