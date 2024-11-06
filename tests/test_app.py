@@ -1,6 +1,6 @@
 import unittest
 import os
-from config import app, db
+from app import app, db 
 
 class BasicTests(unittest.TestCase):
 
@@ -18,10 +18,10 @@ class BasicTests(unittest.TestCase):
             db.session.remove()
             db.drop_all()
 
-    def test_index(self):
+    def test_home(self):
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data.decode(), 'Deployed!')
+        self.assertEqual(response.data.decode(), 'Welcome to the Home Page')
 
 if __name__ == "__main__":
     unittest.main()
