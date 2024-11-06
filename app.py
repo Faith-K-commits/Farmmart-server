@@ -9,5 +9,9 @@ app.config['SECRET_KEY'] = 'secret_key'
 def home():
     return 'Welcome to the Home Page'
 
+@app.route('/ci')
+def ci():
+    return 'Welcome to the CI/CD with Github Actions'
+
 if __name__ == '__main__':
     app.run(debug=True)
