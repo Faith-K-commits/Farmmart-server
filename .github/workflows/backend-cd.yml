@@ -25,9 +25,9 @@ jobs:
 
     - name: Install Node.js and render-cli via npm
       run: |
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -  
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash -  
         sudo apt-get install -y nodejs  
-        sudo npm install -g render-cli  
+        sudo npm install -g render-cli
 
     - name: Add render-cli to PATH
       run: echo "/home/runner/.npm-global/bin" >> $GITHUB_PATH
@@ -35,4 +35,4 @@ jobs:
     - name: Deploy to Render
       env:
         RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      run: render deploy --service Farmmart --token $RENDER_API_KEY
+      run: render deploy --service Farmmart --token $RENDER_API_KEY --engine ejs
