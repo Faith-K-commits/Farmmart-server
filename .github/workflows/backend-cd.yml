@@ -22,12 +22,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    
-    - name: Install render-cli
-      run: curl -fsSL https://cli.render.com/install | sh
+
+    - name: Install Node.js and render-cli via npm
+      run: |
+        curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
+        sudo apt-get install -y nodejs
+        sudo npm install -g render-cli
 
     - name: Add render-cli to PATH
-      run: echo "/home/runner/.render-cli/bin" >> $GITHUB_PATH
+      run: echo "/home/runner/.npm-global/bin" >> $GITHUB_PATH
 
     - name: Deploy to Render
       env:
