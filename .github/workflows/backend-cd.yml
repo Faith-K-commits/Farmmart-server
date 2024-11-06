@@ -25,9 +25,9 @@ jobs:
 
     - name: Install Node.js and render-cli via npm
       run: |
-        curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
-        sudo apt-get install -y nodejs
-        sudo npm install -g render-cli
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -  
+        sudo apt-get install -y nodejs  
+        sudo npm install -g render-cli  
 
     - name: Add render-cli to PATH
       run: echo "/home/runner/.npm-global/bin" >> $GITHUB_PATH
