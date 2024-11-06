@@ -2,7 +2,8 @@ name: Backend CD
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
 
 jobs:
   deploy:
@@ -25,6 +26,7 @@ jobs:
     - name: Install render-cli
       run: |
         curl -fsSL https://cli.render.com/install | sh
+        export PATH=$PATH:/home/runner/.render-cli/bin
 
     - name: Deploy to Render
       env:
