@@ -1,61 +1,37 @@
-# Farmmart
-
-Farmmart is an e-commerce platform designed for farmers to sell their produce directly to consumers. This README provides an overview of the project setup and instructions for getting started.
-
-## Table of Contents
-
-- [Installation](#installation)
-- [Usage](#usage)
-- [Contributing](#contributing)
-
 ## Installation
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/Faith-K-commits/Farmmart.git
+    git clone https://github.com/Faith-K-commits/Farmmart-server.git
     ```
 2. Navigate to the project directory:
     ```sh
-    cd Farmmart
+    cd Farmmart-server
     ```
-3. Install dependencies:
+3. Fetch the development branch:
+    ```sh
+    git fetch origin development
+    ```
+4. Checkout to the development branch:
+    ```sh
+    git checkout development
+    ```
+5. Create your own branch:
+    ```sh
+    git branch contributor/feature_name
+    ```
+    - Example: `contributor/landing_page`
+6. Install backend dependencies:
     ```sh
     pipenv install
     ```
-4. Navigate to the client directory:
-    ```sh
-    cd client
-    ```
-5. Install dependencies:
-    ```sh
-    npm install
-    ```
+7. Start coding
 
-## Usage
+8. Write tests
 
-1. Start the development server:
-    ```sh
-    pipenv run honcho start
-    ```
-2. The application ahould now be acessible:
-    - Backend: `http://localhost:5000`
-    - Frontend: ` http://localhost:5173`
+9. Run tests
+```sh
+    python -m unittest discover -s tests
+```
 
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Clone the repository.
-2. Create a new branch:
-    ```sh
-    git checkout -b yourname/feature-branch
-    ```
-3. Make your changes and commit them:
-    ```sh
-    git commit -m "Description of changes"
-    ```
-4. Push to the branch:
-    ```sh
-    git push origin feature-branch
-    ```
-5. Open a pull request.
+NB: Ensure you push your changes to your branch when tests pass and create a pull request to the development branch.
