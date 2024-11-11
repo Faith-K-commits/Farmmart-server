@@ -15,10 +15,10 @@ def home():
 def ci():
     return 'Welcome to the CI/CD with Github Actions'
 
-@app.route('/cart/<int:cart_id>', methods=['GET'])
-def get_cart(cart_id):
-    cart = Cart.query.get_or_404(cart_id)
-    return jsonify(cart.to_dict())
+# @app.route('/cart/<int:cart_id>', methods=['GET'])
+# def get_cart(cart_id):
+#     cart = Cart.query.get_or_404(cart_id)
+#     return jsonify(cart.to_dict())
 
 if __name__ == '__main__':
     app.run(debug=True)
