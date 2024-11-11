@@ -1,7 +1,7 @@
 # import unittest #testing
 # from datetime import datetime
 # from config import db, app
-# from models import User, Animal, Cart, CartItem
+# from models import Animal, Cart, CartItem
 # import uuid #create unique data eg email
 
 # class TestCartModel(unittest.TestCase):
