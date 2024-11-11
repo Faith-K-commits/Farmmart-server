@@ -177,3 +177,34 @@ class Cart(db.Model):
             'user': self.user.to_dict(),  # Serialize User info
             'animal': self.animal.to_dict()  # Serialize the associated animal details
         }
+    
+class CartItem(db.Model):
+    __tablename__ = 'cart_items'  # table name in the database
+
+    # Primary key: Unique identifier for each CartItem entry
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Foreign Key linking to the Cart table, represents the cart to which this item belongs
+    cart_id = db.Column(db.Integer, db.ForeignKey('carts.id'), nullable=False)
+
+    # Foreign Key linking to the Animal table, represents the animal product being added to the cart
+    animal_id = db.Column(db.Integer, db.ForeignKey('animals.id'), nullable=False)
+
+    # Quantity of the animal product being added to the cart, default is 1
+    quantity = db.Column(db.Integer, nullable=False, default=1)
+
+    # Timestamp of when the item was added to the cart, defaults to the current UTC time
+    added_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationship to the Cart model
+    cart = db.relationship('Cart', back_populates='cart_items')
+
+    # Relationship to the Animal model
+    animal = db.relationship('Animal', back_populates='cart_items')
+
+    def __repr__(self):
+        """
+        String representation of the CartItem instance, useful for debugging.
+        Displays cart_id, animal_id, and quantity for easy identification.
+        """
+        return f"<CartItem cart_id={self.cart_id} animal_id={self.animal_id} quantity={self.quantity}>"
