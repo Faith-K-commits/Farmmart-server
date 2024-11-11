@@ -1,6 +1,5 @@
 from sqlalchemy_serializer import SerializerMixin
 from config import db, bycrypt
-from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey
 from sqlalchemy.orm import relationship
 
 # Animal model: represents animals listed for sale by vendors.
