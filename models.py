@@ -16,6 +16,11 @@ class User(db.Model, SerializerMixin):
     # exclude password hash from serialization
     serialize_rules = ('-password_hash',)
 
+    # Relationships
+    cart = db.relationship('Cart', back_populates='user', uselist=False, cascade='all, delete-orphan')
+    orders = db.relationship('Orders', back_populates='user', cascade='all, delete-orphan')
+    payments = db.relationship('Payments', back_populates='user', cascade='all, delete-orphan')
+
     # Check constraint to ensure only specific roles are allowed
     __table_args__ = (
         CheckConstraint(role.in_(['admin', 'customer']), name='check_valid_role'),
@@ -60,15 +65,11 @@ class Animal(db.Model, SerializerMixin):
     age = db.Column(db.Integer, nullable=True)
     image_url = db.Column(db.String(255), nullable=True)
 
-    # Foreign Key linking to the Vendor (farmer) who listed the animal
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'), nullable=True) #Temporary Null value for testing (Remember to change this when vendor model is ready)
-
-    # Relationship to Vendor model; allows access to the vendor's information from an animal instance
+    # Foreign Key and Relationship
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'))
     vendor = db.relationship('Vendor', back_populates='animals')
-
-    # Relationship to CartItem model; allows access to all cart items that include this animal
-    # Useful for tracking demand and inventory across user carts
-    cart_items = db.relationship('CartItem', back_populates='animal', lazy=True)
+    cart_items = db.relationship('CartItem', back_populates='animal', cascade='all, delete-orphan')
+    order_items = db.relationship('OrderItem', back_populates='animal', cascade='all, delete-orphan')
 
     def __repr__(self):
         return (f"<Animal(id={self.id}, name='{self.name}', category='{self.category}', breed='{self.breed}', age='{self.age}', price='{self.price}', image_url='{self.image_url}', vendor_id='{self.vendor_id}')>")
@@ -82,6 +83,11 @@ class Orders(db.Model, SerializerMixin):
     total_price = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+
+    # Relationships
+    user = db.relationship('User', back_populates='orders')
+    order_items = db.relationship('OrderItem', back_populates='order', cascade='all, delete-orphan')
+    payment = db.relationship('Payments', back_populates='order', uselist=False)
     
     def __repr__(self):
         return f"Order('{self.id}', '{self.status}', '{self.total_price}')"
@@ -96,6 +102,10 @@ class OrderItem(db.Model, SerializerMixin):
     quantity = db.Column(db.Integer)
     unit_price = db.Column(db.Float)
     subtotal = db.Column(db.Float)
+
+    # Relationships
+    order = db.relationship('Orders', back_populates='order_items')
+    animal = db.relationship('Animal', back_populates='order_items')
     
     def __repr__(self):
         return f"OrderItem('{self.id}', '{self.quantity}', '{self.price}')"
@@ -110,6 +120,10 @@ class Payments(db.Model, SerializerMixin):
     amount = db.Column(db.Float)
     status = db.Column(db.String)
     payment_date = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+    # Relationships
+    user = db.relationship('User', back_populates='payments')
+    order = db.relationship('Orders', back_populates='payment')
     
     def __repr__(self):
         return f"Payments('{self.id}', '{self.amount}', '{self.status}', '{self.payment_date}')"
@@ -123,23 +137,31 @@ class Vendor(db.Model, SerializerMixin):
     # Basic vendor attributes
     name = db.Column(db.String(50), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
     phone_number = db.Column(db.String(15), nullable=True)
     farm_name = db.Column(db.String(100), nullable=True)
 
-    # Relationship to Animal model; allows access to all animals listed by this vendor
+    # Relationships
     animals = db.relationship('Animal', back_populates='vendor', cascade='all, delete-orphan')
+
+    def set_password(self, password):
+
+        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    def check_password(self, password):
+
+        return bcrypt.check_password_hash(self.password_hash, password)
 
     def __repr__(self):
         return (f"<Vendor(id={self.id}, name='{self.name}', email='{self.email}', "
                 f"phone_number='{self.phone_number}', farm_name='{self.farm_name}')>")
 
 
-def set_password(self, password):
-    self.password = bcrypt.generate_password_hash(password).decode('utf-8')
+# def set_password(self, password):
+#     self.password = bcrypt.generate_password_hash(password).decode('utf-8')
 
-def check_password(self, password):
-    return bcrypt.check_password_hash(self.password, password)
+# def check_password(self, password):
+#     return bcrypt.check_password_hash(self.password, password)
 
 class Cart(db.Model):
     __tablename__ = 'carts'
