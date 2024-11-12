@@ -66,7 +66,7 @@ class OrdersResource(Resource):
         data = request.get_json()
         
         # Validate status
-        if data.get('status') not in ['Pending', 'Paid', 'Failed']:
+        if data.get('status') not in ['Pending', 'Completed', 'Failed']:
             return {'error': 'Invalid order status'}, 400
         
         # Calculate total price before creating the order
