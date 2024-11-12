@@ -14,7 +14,7 @@ class User(db.Model, SerializerMixin):
     role = db.Column(db.String(50), nullable=False, default='customer') 
 
     # exclude password hash from serialization
-    serialize_rules = ('-password_hash',)
+    serialize_only = ('id', 'name', 'email', 'role')
 
     # Relationships
     cart = db.relationship('Cart', back_populates='user', uselist=False, cascade='all, delete-orphan')
