@@ -2,6 +2,18 @@ from config import db, app
 from models import User, Vendor, Animal, Orders, OrderItem, Payments, Cart, CartItem
 from datetime import datetime
 
+def clear_data():
+    db.session.query(CartItem).delete()
+    db.session.query(Cart).delete()
+    db.session.query(OrderItem).delete()
+    db.session.query(Orders).delete()
+    db.session.query(Payments).delete()
+    db.session.query(Animal).delete()
+    db.session.query(Vendor).delete()
+    db.session.query(User).delete()
+    db.session.commit()
+    print("Cleared existing data.")
+
 def seed_users():
     """Seed the User model with initial data."""
     users = [
@@ -223,6 +235,7 @@ def seed_cart_items():
 if __name__ == "__main__":
     with app.app_context():
         print("Seeding the database...")
+        clear_data()
         seed_users()
         seed_vendors()
         seed_animals()
