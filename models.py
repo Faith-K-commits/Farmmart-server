@@ -79,7 +79,7 @@ class Orders(db.Model, SerializerMixin):
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))
-    status = db.Column(db.String, default='Pending')
+    status = db.Column(db.String, default='Pending', nullable=False)
     total_price = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
     updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
@@ -88,6 +88,13 @@ class Orders(db.Model, SerializerMixin):
     user = db.relationship('User', back_populates='orders')
     order_items = db.relationship('OrderItem', back_populates='order', cascade='all, delete-orphan')
     payment = db.relationship('Payments', back_populates='order', uselist=False)
+    
+    __table_args__ = (
+        CheckConstraint("status IN ('Pending', 'Completed', 'Failed')", name='check_order_status'),
+    )
+    
+    def calculate_total_price(self):
+        return sum(item.quantity * item.unit_price for item in self.order_items)
     
     def __repr__(self):
         return f"Order('{self.id}', '{self.status}', '{self.total_price}')"
@@ -124,6 +131,10 @@ class Payments(db.Model, SerializerMixin):
     # Relationships
     user = db.relationship('User', back_populates='payments')
     order = db.relationship('Orders', back_populates='payment')
+    
+    __table_args__ = (
+        CheckConstraint("status IN ('Pending', 'Completed', 'Failed')", name='check_payment_status'),
+    )
     
     def __repr__(self):
         return f"Payments('{self.id}', '{self.amount}', '{self.status}', '{self.payment_date}')"
