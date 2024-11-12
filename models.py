@@ -133,7 +133,7 @@ class Payments(db.Model, SerializerMixin):
     order = db.relationship('Orders', back_populates='payment')
     
     __table_args__ = (
-        CheckConstraint("status IN ('Pending', 'Completed', 'Failed')", name='check_payment_status'),
+        CheckConstraint("status IN ('Pending', 'Paid', 'Failed')", name='check_payment_status'),
     )
     
     def __repr__(self):
