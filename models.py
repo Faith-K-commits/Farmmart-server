@@ -65,8 +65,12 @@ class Animal(db.Model, SerializerMixin):
     age = db.Column(db.Integer, nullable=True)
     image_url = db.Column(db.String(255), nullable=True)
 
-    # Foreign Key and Relationship
+    # Foreign Key
     vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'))
+
+    serialize_only = ('id', 'name', 'price', 'available_quantity', 'description', 'category', 'breed', 'age', 'image_url')
+
+    # Relationship
     vendor = db.relationship('Vendor', back_populates='animals')
     cart_items = db.relationship('CartItem', back_populates='animal', cascade='all, delete-orphan')
     order_items = db.relationship('OrderItem', back_populates='animal', cascade='all, delete-orphan')

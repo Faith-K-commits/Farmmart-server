@@ -176,7 +176,7 @@ def seed_payments():
             "order_id": orders[0].id,
             "user_id": users[0].id,
             "amount": 2000.0,
-            "status": "Completed"
+            "status": "Paid"
         }
     ]
 

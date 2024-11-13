@@ -47,7 +47,7 @@ class AnimalResource(Resource):
             animal = db.session.get(Animal, animal_id)
             if not animal:
                 return make_response(jsonify({"error": "No animal found with this ID!"}), 404)
-            return make_response(jsonify(self.serialize_animal(animal)), 200)
+            return make_response(jsonify(animal.to_dict()), 200)
         
         # Pagination: retrieve 'page' and 'per_page' from query parameters, with defaults
         page = request.args.get('page', 1, type=int)
@@ -58,7 +58,7 @@ class AnimalResource(Resource):
             animals_query = Animal.query.paginate(page=page, per_page=per_page, error_out=False)
             
             # Serialize the animals on the current page
-            animals = [self.serialize_animal(animal) for animal in animals_query.items]
+            animals = [animal.to_dict() for animal in animals_query.items]
             
             # Add pagination metadata
             pagination_info = {
@@ -91,7 +91,7 @@ class AnimalResource(Resource):
             animal = Animal(**data)
             db.session.add(animal)
             db.session.commit()
-            return make_response(jsonify(self.serialize_animal(animal)), 201)
+            return make_response(jsonify(animal.to_dict()), 201)
         except Exception as e:
             db.session.rollback()
             return make_response(jsonify({"error": str(e)}), 400)
@@ -115,7 +115,7 @@ class AnimalResource(Resource):
                     animal.image_url = result['secure_url']
 
             db.session.commit()
-            return make_response(jsonify(self.serialize_animal(animal)), 200)
+            return make_response(jsonify(animal.to_dict()), 200)
         except Exception as e:
             db.session.rollback()
             return make_response(jsonify({"error": str(e)}), 400)
@@ -133,21 +133,6 @@ class AnimalResource(Resource):
             db.session.rollback()
             return make_response(jsonify({"error": str(e)}), 400)
     
-    # Helper method to serialize an animal instance without recursion
-    def serialize_animal(self, animal):
-        return {
-            "id": animal.id,
-            "name": animal.name,
-            "price": animal.price,
-            "available_quantity": animal.available_quantity,
-            "description": animal.description,
-            "category": animal.category,
-            "breed": animal.breed,
-            "age": animal.age,
-            "image_url": animal.image_url,
-            "vendor_id": animal.vendor_id
-        }
-
 class AnimalSearchResource(Resource):
     # Search endpoint: /animals/search
     def get(self):
@@ -167,7 +152,7 @@ class AnimalSearchResource(Resource):
 
         # Paginate the search results
         animals_query = query.paginate(page=page, per_page=per_page, error_out=False)
-        animals = [self.serialize_animal(animal) for animal in animals_query.items]
+        animals = [animal.to_dict() for animal in animals_query.items]
 
         # Pagination metadata
         pagination_info = {
@@ -180,20 +165,6 @@ class AnimalSearchResource(Resource):
         }
 
         return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
-
-    def serialize_animal(self, animal):
-        return {
-            "id": animal.id,
-            "name": animal.name,
-            "price": animal.price,
-            "available_quantity": animal.available_quantity,
-            "description": animal.description,
-            "category": animal.category,
-            "breed": animal.breed,
-            "age": animal.age,
-            "image_url": animal.image_url,
-            "vendor_id": animal.vendor_id
-        }
 
 class AnimalFilterResource(Resource):
     # Filter endpoint: /animals/filter
@@ -217,7 +188,7 @@ class AnimalFilterResource(Resource):
 
         # Paginate the filtered results
         animals_query = query.paginate(page=page, per_page=per_page, error_out=False)
-        animals = [self.serialize_animal(animal) for animal in animals_query.items]
+        animals = [animal.to_dict() for animal in animals_query.items]
 
         # Pagination metadata
         pagination_info = {
@@ -230,20 +201,6 @@ class AnimalFilterResource(Resource):
         }
 
         return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
-
-    def serialize_animal(self, animal):
-        return {
-            "id": animal.id,
-            "name": animal.name,
-            "price": animal.price,
-            "available_quantity": animal.available_quantity,
-            "description": animal.description,
-            "category": animal.category,
-            "breed": animal.breed,
-            "age": animal.age,
-            "image_url": animal.image_url,
-            "vendor_id": animal.vendor_id
-        }
     
 # Register the resource with the API
 api.add_resource(UploadImage, '/upload')
