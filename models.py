@@ -186,35 +186,35 @@ class Cart(db.Model):
 
     # Foreign Key linking to User
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Cart creation date
+
+    # Relationships
     cart_items = db.relationship('CartItem', back_populates='cart', cascade='all, delete-orphan')
-
-    # User relationship
     user = db.relationship('User', back_populates='cart')
-    #user = db.relationship('User', back_populates='cart')
 
     def __repr__(self):
         return f"<Cart user_id={self.user_id} created_at={self.created_at}>"
-    def __repr__(self):
-        return f"<Cart user_id={self.user_id} created_at={self.created_at}>"
 
-    def to_dict(self):
-        # Serialize Cart to dictionary, including the CartItems and User info
-        return {
+    def to_dict(self, include_user=False):
+        """
+        Serialize Cart to dictionary. Optionally include User info without including `user.cart`
+        to avoid recursion.
+        """
+        data = {
             'id': self.id,
             'user_id': self.user_id,
-            'user_id': self.user_id,
             'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
-            'cart_items': [item.to_dict() for item in self.cart_items],  # Serialize CartItems
-            'user': self.user.to_dict(),  # Serialize User info
-            'user': self.user.to_dict(),  # Serialize User info
-            'animal': self.animal.to_dict()  # Serialize the associated animal details
+            'cart_items': [item.to_dict() for item in self.cart_items]  # Serialize CartItems without circular reference
         }
-    
+        if include_user:
+            data['user'] = {
+                'id': self.user.id,
+                'name': self.user.name  # Add other relevant fields here, excluding `cart` relationship to avoid recursion
+            }
+        return data
+
 class CartItem(db.Model):
     __tablename__ = 'cart_items'  # table name in the database
 
@@ -240,8 +240,23 @@ class CartItem(db.Model):
     animal = db.relationship('Animal', back_populates='cart_items')
 
     def __repr__(self):
-        """
-        String representation of the CartItem instance, useful for debugging.
-        Displays cart_id, animal_id, and quantity for easy identification.
-        """
         return f"<CartItem cart_id={self.cart_id} animal_id={self.animal_id} quantity={self.quantity}>"
+
+    def to_dict(self, include_animal=False):
+        """
+        Serialize CartItem to dictionary, optionally including related Animal details to avoid circular references.
+        """
+        data = {
+            'id': self.id,
+            'cart_id': self.cart_id,
+            'animal_id': self.animal_id,
+            'quantity': self.quantity,
+            'added_at': self.added_at.isoformat()
+        }
+        if include_animal:
+            data['animal'] = {
+                'id': self.animal.id,
+                'name': self.animal.name,  # Add other relevant fields here, excluding `cart_items` to avoid recursion
+            }
+        return data
+
