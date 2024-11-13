@@ -1,8 +1,8 @@
-"""empty message
+"""initial migrate
 
-Revision ID: 364e302636bc
-Revises: 5ddc4467155f
-Create Date: 2024-11-12 10:57:40.624503
+Revision ID: 06ceaae33b38
+Revises: 
+Create Date: 2024-11-13 15:40:47.769800
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '364e302636bc'
-down_revision = '5ddc4467155f'
+revision = '06ceaae33b38'
+down_revision = None
 branch_labels = None
 depends_on = None
 
@@ -62,10 +62,11 @@ def upgrade():
     op.create_table('orders',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
-    sa.Column('status', sa.String(), nullable=True),
+    sa.Column('status', sa.String(), nullable=False),
     sa.Column('total_price', sa.Float(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.CheckConstraint("status IN ('Pending', 'Completed', 'Failed')", name='check_order_status'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
@@ -97,6 +98,7 @@ def upgrade():
     sa.Column('amount', sa.Float(), nullable=True),
     sa.Column('status', sa.String(), nullable=True),
     sa.Column('payment_date', sa.DateTime(), nullable=True),
+    sa.CheckConstraint("status IN ('Pending', 'Paid', 'Failed')", name='check_payment_status'),
     sa.ForeignKeyConstraint(['order_id'], ['orders.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
