@@ -1,7 +1,7 @@
 from flask import make_response, jsonify, request
 from flask_restful import Resource
 from config import db, app, api
-from models import Animal, Orders, OrderItem, Payments, Cart, CartItem, User
+from models import Animal, Orders, OrderItem, Payments, Cart, CartItem, User, Vendor
 import cloudinary.uploader
 from datetime import datetime
 
@@ -256,11 +256,21 @@ class AnimalResource(Resource):
     # GET method to retrieve animals
     def get(self, animal_id=None):
         if animal_id:
-            # Fetch a single animal by ID
             animal = db.session.get(Animal, animal_id)
             if not animal:
                 return make_response(jsonify({"error": "No animal found with this ID!"}), 404)
-            return make_response(jsonify(animal.to_dict()), 200)
+
+            # Fetch vendor details
+            vendor = db.session.get(Vendor, animal.vendor_id)
+            animal_data = animal.to_dict()
+            if vendor:
+                animal_data.update({
+                    "vendor_name": vendor.name,
+                    "farm_name": vendor.farm_name,
+                    "phone_number": vendor.phone_number,
+                    "email": vendor.email
+                })
+            return make_response(jsonify(animal_data), 200)
         
         # Pagination: retrieve 'page' and 'per_page' from query parameters, with defaults
         page = request.args.get('page', 1, type=int)
