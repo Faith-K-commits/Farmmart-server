@@ -677,6 +677,123 @@ class CartItemsResource(Resource):
             "total_pages": cart_items.pages,
             "current_page": cart_items.page
         }, 200
+    
+class VendorResource(Resource):
+   def get(self, vendor_id=None):
+       if vendor_id:
+           # Fetch a single vendor by their ID
+           vendor = Vendor.query.get_or_404(vendor_id)
+           vendor_data = {
+               'id': vendor.id,
+               'name': vendor.name,
+               'email': vendor.email,
+               'phone_number': vendor.phone_number,
+               'farm_name': vendor.farm_name
+           }
+           return make_response(jsonify(vendor_data), 200)
+       else:
+           # Pagination
+           page = request.args.get('page', 1, type=int)
+           per_page = request.args.get('per_page', 5, type=int)
+           paginated_vendors = Vendor.query.paginate(page=page, per_page=per_page, error_out=False)
+           vendors = paginated_vendors.items
+           vendors_data = [{
+               'id': vendor.id,
+               'name': vendor.name,
+               'email': vendor.email,
+               'phone_number': vendor.phone_number,
+               'farm_name': vendor.farm_name
+           } for vendor in vendors]
+
+
+           response = {
+               'vendors': vendors_data,
+               'meta': {
+                   'current_page': paginated_vendors.page,
+                   'per_page': paginated_vendors.per_page,
+                   'total_items': paginated_vendors.total,
+                   'total_pages': paginated_vendors.pages,
+                   'has_next': paginated_vendors.has_next,
+                   'has_prev': paginated_vendors.has_prev,
+                   'next_page': paginated_vendors.next_num if paginated_vendors.has_next else None,
+                   'prev_page': paginated_vendors.prev_num if paginated_vendors.has_prev else None
+               }
+           }
+          
+           return make_response(jsonify(response), 200)
+
+
+   def patch(self, vendor_id):
+       vendor = Vendor.query.get_or_404(vendor_id)
+       data = request.get_json()
+
+
+       # Update fields if present in the request body
+       if 'name' in data:
+           vendor.name = data['name']
+       if 'email' in data:
+           vendor.email = data['email']
+       if 'phone_number' in data:
+           vendor.phone_number = data['phone_number']
+       if 'farm_name' in data:
+           vendor.farm_name = data['farm_name']
+
+
+       db.session.commit()
+
+
+       return make_response(jsonify({'message': 'Vendor updated successfully'}), 200)
+
+
+   def delete(self, vendor_id):
+       vendor = Vendor.query.get_or_404(vendor_id)
+       db.session.delete(vendor)
+       db.session.commit()
+
+
+       return make_response(jsonify({'message': f'Vendor {vendor_id} deleted successfully'}), 204)
+
+
+class VendorCreateResource(Resource):
+   def post(self):
+       data = request.get_json()
+
+
+       # Validate input data
+       if 'name' not in data or 'email' not in data or 'password' not in data:
+           return {'error': 'Name, email, and password are required fields'}, 400
+
+
+       # Check if email already exists
+       existing_vendor = Vendor.query.filter_by(email=data['email']).first()
+       if existing_vendor:
+           return {'error': 'Email already in use'}, 400
+
+
+       # Create a new vendor
+       vendor = Vendor(
+           name=data['name'],
+           email=data['email'],
+           phone_number=data.get('phone_number'),
+           farm_name=data.get('farm_name')
+       )
+       vendor.set_password(data['password'])
+
+
+       db.session.add(vendor)
+       db.session.commit()
+
+
+       return make_response(jsonify({'message': 'Vendor created successfully', 'id': vendor.id}), 201)
+
+
+
+
+  
+# Register the resource with the API
+api.add_resource(VendorCreateResource, '/vendors')  # POST method to create a new vendoR
+api.add_resource(VendorResource, '/vendors', '/vendors/<int:vendor_id>')  # GET, PATCH, DELETE methods
+
 
 
     
