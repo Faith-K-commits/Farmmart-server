@@ -425,6 +425,22 @@ class AnimalFilterResource(Resource):
 
         return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
 
+# Resource to get unique animal categories
+class CategoryResource(Resource):
+    def get(self):
+        # Query distinct categories from the Animal model
+        categories = Animal.query.with_entities(Animal.category).distinct().all()
+        # Convert categories to a list of strings and return as JSON
+        return jsonify([category[0] for category in categories])
+
+# Resource to get unique animal breeds
+class BreedResource(Resource):
+    def get(self):
+        # Query distinct breeds from the Animal model
+        breeds = Animal.query.with_entities(Animal.breed).distinct().all()
+        # Convert breeds to a list of strings and return as JSON
+        return jsonify([breed[0] for breed in breeds])
+
 ## Cart Resource - Retrieve the user's cart
 class CartResource(Resource):
     def serialize_datetime(self, obj):
@@ -676,6 +692,8 @@ api.add_resource(CartResource, '/cart/<int:user_id>')
 api.add_resource(AddItemToCartResource, '/cart/<int:user_id>/items')
 api.add_resource(UpdateCartItemQuantityResource, '/cart/<int:user_id>/items/<int:animal_id>')
 api.add_resource(RemoveItemFromCartResource, '/cart/<int:user_id>/items/<int:animal_id>')
+api.add_resource(CategoryResource, '/categories')
+api.add_resource(BreedResource, '/breeds')
 
 
 class RegisterResource(Resource):
