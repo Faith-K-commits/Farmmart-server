@@ -79,7 +79,7 @@ def seed_animals():
     animal_templates = [
         {
             "name": "Friesian Cow",
-            "price": 1500.0,
+            "price": 260000.0,
             "available_quantity": 10,
             "description": "A healthy female black and white cow for dairy production.",
             "category": "Cattle",
@@ -89,7 +89,7 @@ def seed_animals():
         },
         {
             "name": "White Sheep",
-            "price": 500.0,
+            "price": 30000.0,
             "available_quantity": 15,
             "description": "Young white sheep with soft wool.",
             "category": "Sheep",
@@ -99,7 +99,7 @@ def seed_animals():
         },
         {
             "name": "White Goat",
-            "price": 700.0,
+            "price": 25000.0,
             "available_quantity": 8,
             "description": "A playful white goat, perfect for grazing and milking.",
             "category": "Goat",
