@@ -4,6 +4,7 @@ from config import db, app, api
 from models import Animal, Orders, OrderItem, Payments, Cart, CartItem, User
 import cloudinary.uploader
 from datetime import datetime
+from flask_login import login_user, logout_user, login_required
 
 # Secret key for sessions
 app.config['SECRET_KEY'] = 'secret_key'
