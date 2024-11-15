@@ -256,11 +256,21 @@ class AnimalResource(Resource):
     # GET method to retrieve animals
     def get(self, animal_id=None):
         if animal_id:
-            # Fetch a single animal by ID
             animal = db.session.get(Animal, animal_id)
             if not animal:
                 return make_response(jsonify({"error": "No animal found with this ID!"}), 404)
-            return make_response(jsonify(animal.to_dict()), 200)
+
+            # Fetch vendor details
+            vendor = db.session.get(Vendor, animal.vendor_id)
+            animal_data = animal.to_dict()
+            if vendor:
+                animal_data.update({
+                    "vendor_name": vendor.name,
+                    "farm_name": vendor.farm_name,
+                    "phone_number": vendor.phone_number,
+                    "email": vendor.email
+                })
+            return make_response(jsonify(animal_data), 200)
         
         # Pagination: retrieve 'page' and 'per_page' from query parameters, with defaults
         page = request.args.get('page', 1, type=int)
@@ -414,6 +424,22 @@ class AnimalFilterResource(Resource):
         }
 
         return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
+
+# Resource to get unique animal categories
+class CategoryResource(Resource):
+    def get(self):
+        # Query distinct categories from the Animal model
+        categories = Animal.query.with_entities(Animal.category).distinct().all()
+        # Convert categories to a list of strings and return as JSON
+        return jsonify([category[0] for category in categories])
+
+# Resource to get unique animal breeds
+class BreedResource(Resource):
+    def get(self):
+        # Query distinct breeds from the Animal model
+        breeds = Animal.query.with_entities(Animal.breed).distinct().all()
+        # Convert breeds to a list of strings and return as JSON
+        return jsonify([breed[0] for breed in breeds])
 
 ## Cart Resource - Retrieve the user's cart
 class CartResource(Resource):
@@ -783,6 +809,8 @@ api.add_resource(CartResource, '/cart/<int:user_id>')
 api.add_resource(AddItemToCartResource, '/cart/<int:user_id>/items')
 api.add_resource(UpdateCartItemQuantityResource, '/cart/<int:user_id>/items/<int:animal_id>')
 api.add_resource(RemoveItemFromCartResource, '/cart/<int:user_id>/items/<int:animal_id>')
+api.add_resource(CategoryResource, '/categories')
+api.add_resource(BreedResource, '/breeds')
 
 
 class RegisterResource(Resource):
