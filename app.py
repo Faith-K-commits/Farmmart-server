@@ -1,7 +1,7 @@
 from flask import make_response, jsonify, request
 from flask_restful import Resource
 from config import db, app, api
-from models import Animal, Orders, OrderItem, Payments, Cart, CartItem, User
+from models import Animal, Orders, OrderItem, Payments, Cart, CartItem, User, Vendor
 import cloudinary.uploader
 from datetime import datetime
 from flask_login import login_user, logout_user, login_required
@@ -257,11 +257,21 @@ class AnimalResource(Resource):
     # GET method to retrieve animals
     def get(self, animal_id=None):
         if animal_id:
-            # Fetch a single animal by ID
             animal = db.session.get(Animal, animal_id)
             if not animal:
                 return make_response(jsonify({"error": "No animal found with this ID!"}), 404)
-            return make_response(jsonify(animal.to_dict()), 200)
+
+            # Fetch vendor details
+            vendor = db.session.get(Vendor, animal.vendor_id)
+            animal_data = animal.to_dict()
+            if vendor:
+                animal_data.update({
+                    "vendor_name": vendor.name,
+                    "farm_name": vendor.farm_name,
+                    "phone_number": vendor.phone_number,
+                    "email": vendor.email
+                })
+            return make_response(jsonify(animal_data), 200)
         
         # Pagination: retrieve 'page' and 'per_page' from query parameters, with defaults
         page = request.args.get('page', 1, type=int)
@@ -415,6 +425,22 @@ class AnimalFilterResource(Resource):
         }
 
         return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
+
+# Resource to get unique animal categories
+class CategoryResource(Resource):
+    def get(self):
+        # Query distinct categories from the Animal model
+        categories = Animal.query.with_entities(Animal.category).distinct().all()
+        # Convert categories to a list of strings and return as JSON
+        return jsonify([category[0] for category in categories])
+
+# Resource to get unique animal breeds
+class BreedResource(Resource):
+    def get(self):
+        # Query distinct breeds from the Animal model
+        breeds = Animal.query.with_entities(Animal.breed).distinct().all()
+        # Convert breeds to a list of strings and return as JSON
+        return jsonify([breed[0] for breed in breeds])
 
 ## Cart Resource - Retrieve the user's cart
 class CartResource(Resource):
@@ -652,6 +678,123 @@ class CartItemsResource(Resource):
             "total_pages": cart_items.pages,
             "current_page": cart_items.page
         }, 200
+    
+class VendorResource(Resource):
+   def get(self, vendor_id=None):
+       if vendor_id:
+           # Fetch a single vendor by their ID
+           vendor = Vendor.query.get_or_404(vendor_id)
+           vendor_data = {
+               'id': vendor.id,
+               'name': vendor.name,
+               'email': vendor.email,
+               'phone_number': vendor.phone_number,
+               'farm_name': vendor.farm_name
+           }
+           return make_response(jsonify(vendor_data), 200)
+       else:
+           # Pagination
+           page = request.args.get('page', 1, type=int)
+           per_page = request.args.get('per_page', 5, type=int)
+           paginated_vendors = Vendor.query.paginate(page=page, per_page=per_page, error_out=False)
+           vendors = paginated_vendors.items
+           vendors_data = [{
+               'id': vendor.id,
+               'name': vendor.name,
+               'email': vendor.email,
+               'phone_number': vendor.phone_number,
+               'farm_name': vendor.farm_name
+           } for vendor in vendors]
+
+
+           response = {
+               'vendors': vendors_data,
+               'meta': {
+                   'current_page': paginated_vendors.page,
+                   'per_page': paginated_vendors.per_page,
+                   'total_items': paginated_vendors.total,
+                   'total_pages': paginated_vendors.pages,
+                   'has_next': paginated_vendors.has_next,
+                   'has_prev': paginated_vendors.has_prev,
+                   'next_page': paginated_vendors.next_num if paginated_vendors.has_next else None,
+                   'prev_page': paginated_vendors.prev_num if paginated_vendors.has_prev else None
+               }
+           }
+          
+           return make_response(jsonify(response), 200)
+
+
+   def patch(self, vendor_id):
+       vendor = Vendor.query.get_or_404(vendor_id)
+       data = request.get_json()
+
+
+       # Update fields if present in the request body
+       if 'name' in data:
+           vendor.name = data['name']
+       if 'email' in data:
+           vendor.email = data['email']
+       if 'phone_number' in data:
+           vendor.phone_number = data['phone_number']
+       if 'farm_name' in data:
+           vendor.farm_name = data['farm_name']
+
+
+       db.session.commit()
+
+
+       return make_response(jsonify({'message': 'Vendor updated successfully'}), 200)
+
+
+   def delete(self, vendor_id):
+       vendor = Vendor.query.get_or_404(vendor_id)
+       db.session.delete(vendor)
+       db.session.commit()
+
+
+       return make_response(jsonify({'message': f'Vendor {vendor_id} deleted successfully'}), 204)
+
+
+class VendorCreateResource(Resource):
+   def post(self):
+       data = request.get_json()
+
+
+       # Validate input data
+       if 'name' not in data or 'email' not in data or 'password' not in data:
+           return {'error': 'Name, email, and password are required fields'}, 400
+
+
+       # Check if email already exists
+       existing_vendor = Vendor.query.filter_by(email=data['email']).first()
+       if existing_vendor:
+           return {'error': 'Email already in use'}, 400
+
+
+       # Create a new vendor
+       vendor = Vendor(
+           name=data['name'],
+           email=data['email'],
+           phone_number=data.get('phone_number'),
+           farm_name=data.get('farm_name')
+       )
+       vendor.set_password(data['password'])
+
+
+       db.session.add(vendor)
+       db.session.commit()
+
+
+       return make_response(jsonify({'message': 'Vendor created successfully', 'id': vendor.id}), 201)
+
+
+
+
+  
+# Register the resource with the API
+api.add_resource(VendorCreateResource, '/vendors')  # POST method to create a new vendoR
+api.add_resource(VendorResource, '/vendors', '/vendors/<int:vendor_id>')  # GET, PATCH, DELETE methods
+
 
 
     
@@ -667,6 +810,8 @@ api.add_resource(CartResource, '/cart/<int:user_id>')
 api.add_resource(AddItemToCartResource, '/cart/<int:user_id>/items')
 api.add_resource(UpdateCartItemQuantityResource, '/cart/<int:user_id>/items/<int:animal_id>')
 api.add_resource(RemoveItemFromCartResource, '/cart/<int:user_id>/items/<int:animal_id>')
+api.add_resource(CategoryResource, '/categories')
+api.add_resource(BreedResource, '/breeds')
 
 
 class RegisterResource(Resource):
