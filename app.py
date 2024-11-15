@@ -740,5 +740,37 @@ class DeleteUserResource(Resource):
 api.add_resource(DeleteUserResource, '/users/<int:user_id>' )
 
 
+class Login(Resource):
+    def post(self):
+        data = request.get_json()
+
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return make_response({"error": "Email and password are required"}, 400)
+
+        # Find the user in the database by email
+        user = User.query.filter_by(email=email).first()
+
+        if user and bcrypt.check_password_hash(user.password_hash, password):
+            # Log the user in
+            login_user(user)
+            return make_response({"message": f"Welcome back, {user.email}!"}, 200)
+        else:
+            return make_response({"error": "Invalid credentials"}, 401)
+
+api.add_resource(Login, '/login')
+
+
+class Logout(Resource):
+    @login_required
+    def post(self):
+        logout_user()
+        return make_response({"message": "Successfully logged out"}, 200)
+
+api.add_resource(Logout, '/logout')
+
+
 if __name__ == '__main__':
     app.run(debug=True)

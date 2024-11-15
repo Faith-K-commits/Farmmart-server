@@ -7,6 +7,8 @@ from flask_migrate import Migrate
 from flask_restful import Api
 from flask_bcrypt import Bcrypt
 import cloudinary
+from flask_login import LoginManager
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -23,6 +25,15 @@ bcrypt = Bcrypt(app)
 CORS(app)
 api=Api(app)
 db.init_app(app)
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# Load the user from the database for Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(user_id)
 
 # Cloudinary configuration
 cloudinary.config(
