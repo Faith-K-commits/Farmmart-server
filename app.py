@@ -303,12 +303,12 @@ class AnimalResource(Resource):
     def post(self):
         data = request.form.to_dict()  # Get other form data as a dictionary
         try:
-            if 'file' in request.files:
-                file = request.files['file']
-                if file.filename != '':
-                    # Upload the file to Cloudinary
+            if 'file' in request.files: # Checks if dile was included in the request
+                file = request.files['file'] #If file is present, this line retireves the file object from the request
+                if file.filename != '': # This checks if the file has a name, ensuring that a file was actually selected and not just an empty file field.
+                    # If a valid file is present, this line uploads the file to Cloudinary.
                     result = cloudinary.uploader.upload(file)
-                    data['image_url'] = result['secure_url']
+                    data['image_url'] = result['secure_url'] # After successful upload, this line adds the secure URL of the uploaded image (provided by Cloudinary) to the data dictionary under the key 'image_url'.
             
             # Create and save new Animal instance
             animal = Animal(**data)
