@@ -1,5 +1,3 @@
-# tests/test_animal_model.py
-
 import unittest
 from config import db, app
 from models import Animal
@@ -84,12 +82,12 @@ class TestAnimalModel(unittest.TestCase):
         db.session.add(animal)
         db.session.commit()
 
-        # # Test if the __repr__ output is formatted as expected
-        # self.assertEqual(
-        #     repr(animal),
-        #     "<Animal(id={}, name='Test Cow', category='Cattle', breed='Holstein', age='5', price='1500.0', image_url='http://example.com/test-cow.jpg', vendor_id='None')>".format(animal.id),
-        #     "The __repr__ method should return a correctly formatted string."
-        # )
+        # Test if the __repr__ output is formatted as expected
+        self.assertEqual(
+            repr(animal),
+            "<Animal(id={}, name='Test Cow', category='Cattle', breed='Holstein', age='5', price='1500.0', image_url='http://example.com/test-cow.jpg', vendor_id='None')>".format(animal.id),
+            "The __repr__ method should return a correctly formatted string."
+        )
 
     def test_animal_update(self):
         """
