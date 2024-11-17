@@ -1,12 +1,12 @@
-from flask import make_response, jsonify, request
+from flask import make_response, jsonify, request, current_app
 from flask_restful import Resource
 from config import db, app, api
 from models import Animal, Orders, OrderItem, Payments, Cart, CartItem, User, Vendor
 import cloudinary.uploader
-from datetime import datetime
+from datetime import datetime, timedelta 
+from flask_login import login_user, logout_user, login_required
+import jwt
 
-# Secret key for sessions
-app.config['SECRET_KEY'] = 'secret_key'
 
 @app.route('/')
 def home():
@@ -883,6 +883,54 @@ class DeleteUserResource(Resource):
             return {'error': 'An error occurred while deleting the user'}, 500
 
 api.add_resource(DeleteUserResource, '/users/<int:user_id>' )
+
+
+class Login(Resource):
+    def post(self):
+        data = request.get_json()
+
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return make_response({"error": "Email and password are required"}, 400)
+
+        # Find the user in the database by email
+        user = User.query.filter_by(email=email).first()
+
+        if user and user.check_password(password):
+            # Generate a JWT token using the app's SECRET_KEY
+            token = jwt.encode(
+                {
+                    "id": user.id,
+                    "exp": datetime.utcnow() + timedelta(hours=24)  
+                },
+                current_app.config['SECRET_KEY'],
+                algorithm="HS256"
+            )
+            
+
+            # Log the user in with Flask-Login
+            login_user(user)
+
+            # Return the token and role
+            return make_response({
+                "token": token,
+                "role": user.role,
+                "name": user.name
+            }, 200)
+
+        return make_response({"error": "Invalid credentials"}, 401)
+        
+api.add_resource(Login, '/login')
+
+class Logout(Resource):
+    @login_required
+    def post(self):
+        logout_user()
+        return make_response({"message": "Successfully logged out"}, 200)
+
+api.add_resource(Logout, '/logout')
 
 
 if __name__ == '__main__':
