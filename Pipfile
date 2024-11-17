@@ -15,6 +15,8 @@ gunicorn = "*"
 psycopg2-binary = "*"
 load-dotenv = "*"
 cloudinary = "*"
+flask-login = "*"
+jwt = "*"
 
 [dev-packages]
 
