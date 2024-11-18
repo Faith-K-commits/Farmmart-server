@@ -144,7 +144,7 @@ class Payments(db.Model, SerializerMixin):
     def __repr__(self):
         return f"Payments('{self.id}', '{self.amount}', '{self.status}', '{self.payment_date}')"
 
-class Vendor(db.Model, SerializerMixin):
+class Vendor(db.Model, UserMixin, SerializerMixin):
     __tablename__ = 'vendors'
 
     # Primary Key: Unique identifier for each vendor
