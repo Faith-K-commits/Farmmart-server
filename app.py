@@ -7,6 +7,7 @@ import cloudinary.uploader
 from datetime import datetime, timedelta 
 from flask_login import login_user, logout_user, login_required
 import jwt
+import random
 import json
 
 
@@ -430,6 +431,17 @@ class BreedResource(Resource):
         breeds = Animal.query.with_entities(Animal.breed).distinct().all()
         # Convert breeds to a list of strings and return as JSON
         return jsonify([breed[0] for breed in breeds])
+
+# Fetches Random selection of animals
+@app.route("/animals/featured", methods=["GET"])
+def get_featured_animals():
+    try:
+        # Fetch a random selection of 5 animals
+        random_animals = Animal.query.order_by(db.func.random()).limit(5).all()
+        animals_data = [animal.to_dict() for animal in random_animals]
+        return jsonify({"featured_animals": animals_data}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 ## Cart Resource - Retrieve the user's cart
 class CartResource(Resource):
@@ -921,6 +933,54 @@ class Logout(Resource):
         return make_response({"message": "Successfully logged out"}, 200)
 
 api.add_resource(Logout, '/logout')
+
+class VendorLogin(Resource):
+    def post(self):
+        data = request.get_json()
+
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return make_response({"error": "Email and password are required"}, 400)
+
+        # Find the vendor in the database by email
+        vendor = Vendor.query.filter_by(email=email).first()
+
+        if vendor and vendor.check_password(password):
+            # Generate a JWT token using the app's SECRET_KEY
+            token = jwt.encode(
+                {
+                    "id": vendor.id,
+                    "exp": datetime.utcnow() + timedelta(hours=24)  
+                },
+                current_app.config['SECRET_KEY'],
+                algorithm="HS256"
+            )
+
+            # Log the vendor in with Flask-Login
+            login_user(vendor)
+
+            # Return the token and vendor details
+            return make_response({
+                "token": token,
+                "name": vendor.name,
+                "farm_name": vendor.farm_name
+            }, 200)
+
+        return make_response({"error": "Invalid credentials"}, 401)
+
+api.add_resource(VendorLogin, '/vendor/login')
+
+
+class VendorLogout(Resource):
+    @login_required
+    def post(self):
+        logout_user()
+        return make_response({"message": "Successfully logged out"}, 200)
+
+api.add_resource(VendorLogout, '/vendor/logout')
+
 
 
 if __name__ == '__main__':
