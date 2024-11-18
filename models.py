@@ -81,6 +81,7 @@ class Animal(db.Model, SerializerMixin):
 class Orders(db.Model, SerializerMixin):
     
     __tablename__ = 'orders'
+    serialize_only = ('id', 'status', 'total_price', 'created_at', 'updated_at')
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))

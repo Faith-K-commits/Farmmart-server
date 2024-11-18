@@ -1,3 +1,4 @@
+from functools import wraps
 from flask import make_response, jsonify, request, current_app
 from flask_restful import Resource
 from config import db, app, api
@@ -7,6 +8,7 @@ from datetime import datetime, timedelta
 from flask_login import login_user, logout_user, login_required
 import jwt
 import random
+import json
 
 
 @app.route('/')
@@ -37,36 +39,25 @@ class UploadImage(Resource):
             return {"url": result['secure_url']}, 200
         except Exception as e:
             # Handle any exceptions and return an error message
-            return {"error": str(e)}, 500
-        
+            return {"error": str(e)}, 500        
 class OrdersResource(Resource):
     def get(self, order_id=None):
         if order_id:
             # Fetch a single order by its ID
-            order = Orders.query.get_or_404(order_id)
-            order_data = {
-                'id': order.id,
-                'user_id': order.user_id,
-                'status': order.status,
-                'total_price': order.calculate_total_price(),
-                'created_at': order.created_at,
-                'updated_at': order.updated_at
-            }
+            order = Orders.query.filter_by(id=order_id).first()
+            if not order:
+                return make_response(jsonify({'error': 'Order not found!'}), 404)
+            order_data = order.to_dict()
+
             return make_response(jsonify(order_data), 200)
         else:
             page = request.args.get('page', 1, type=int)
             per_page = request.args.get('per_page', 5, type=int)
             paginated_orders = Orders.query.paginate(page=page, per_page=per_page, error_out=False)
             orders = paginated_orders.items
-            orders_data = [{
-                'id': order.id,
-                'user_id': order.user_id,
-                'status': order.status,
-                'total_price': order.calculate_total_price(),
-                'created_at': order.created_at,
-                'updated_at': order.updated_at
-            } for order in orders]
-            
+
+            orders_data = [order.to_dict() for order in orders]
+
             response = {
                 'orders': orders_data,
                 'meta': {
@@ -80,7 +71,6 @@ class OrdersResource(Resource):
                     'prev_page': paginated_orders.prev_num if paginated_orders.has_prev else None
                 }
             }
-            
             return make_response(jsonify(response), 200)
 
     def post(self):
@@ -91,7 +81,7 @@ class OrdersResource(Resource):
             return {'error': 'Invalid order status'}, 400
         
         # Calculate total price before creating the order
-        order = Orders(user_id=data['user_id'], status=data['status'])
+        order = Orders(user_id=request.user_id, status=data['status'])
         db.session.add(order)
         db.session.commit()
 
