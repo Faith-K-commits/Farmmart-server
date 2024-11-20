@@ -1,22 +1,22 @@
 from config import db, app
-from models import User, Vendor, Animal, Orders, OrderItem, Payments, Cart, CartItem
+from models import BaseUser, Animal, Orders, OrderItem, Payments, Cart, CartItem
 from datetime import datetime
 
 def clear_data():
+    """Clear all data from the database."""
     db.session.query(CartItem).delete()
     db.session.query(Cart).delete()
     db.session.query(OrderItem).delete()
     db.session.query(Orders).delete()
     db.session.query(Payments).delete()
     db.session.query(Animal).delete()
-    db.session.query(Vendor).delete()
-    db.session.query(User).delete()
+    db.session.query(BaseUser).delete()
     db.session.commit()
     print("Cleared existing data.")
 
-def seed_users():
-    """Seed the User model with initial data."""
-    users = [
+def seed_users_and_vendors():
+    """Seed BaseUser model with both user and vendor data."""
+    users_and_vendors = [
         {
             "name": "John Doe",
             "email": "john@example.com",
@@ -28,50 +28,43 @@ def seed_users():
             "email": "admin@example.com",
             "role": "admin",
             "password": "admin123"
-        }
+        },
+        {
+            "name": "Vendor 1",
+            "email": "vendor1@example.com",
+            "role": "vendor",
+            "password": "vendor1password",
+            "phone_number": "555-123-0001",
+            "farm_name": "Farm 1"
+        },
+        {
+            "name": "Vendor 2",
+            "email": "vendor2@example.com",
+            "role": "vendor",
+            "password": "vendor2password",
+            "phone_number": "555-123-0002",
+            "farm_name": "Farm 2"
+        },
     ]
 
-    for user_data in users:
-        user = User(
+    for user_data in users_and_vendors:
+        user = BaseUser(
             name=user_data["name"],
             email=user_data["email"],
             role=user_data["role"]
         )
         user.set_password(user_data["password"])
+        if user.role == "vendor":
+            user.phone_number = user_data["phone_number"]
+            user.farm_name = user_data["farm_name"]
         db.session.add(user)
 
     db.session.commit()
-    print("Users seeded successfully!")
-
-def seed_vendors():
-    """Seed the Vendor model with 5 vendors."""
-    vendors = [
-        {
-            "name": f"Vendor {i+1}",
-            "email": f"vendor{i+1}@example.com",
-            "password": f"vendor{i+1}password",
-            "phone_number": f"555-123-000{i+1}",
-            "farm_name": f"Farm {i+1}"
-        }
-        for i in range(5)
-    ]
-
-    for vendor_data in vendors:
-        vendor = Vendor(
-            name=vendor_data["name"],
-            email=vendor_data["email"],
-            phone_number=vendor_data["phone_number"],
-            farm_name=vendor_data["farm_name"]
-        )
-        vendor.set_password(vendor_data["password"])  # Hash the password
-        db.session.add(vendor)
-
-    db.session.commit()
-    print("5 Vendors seeded successfully!")
+    print("Users and Vendors seeded successfully!")
 
 def seed_animals():
-    """Seed the Animal model with 3 animals per vendor."""
-    vendors = Vendor.query.all()
+    """Seed the Animal model with animals associated with vendors."""
+    vendors = BaseUser.query.filter_by(role="vendor").all()
     if not vendors:
         print("No vendors found. Please seed vendors first.")
         return
@@ -111,26 +104,67 @@ def seed_animals():
 
     for vendor in vendors:
         for template in animal_templates:
-            # Copy template data and assign it to the current vendor
-            animal_data = {**template, "vendor_id": vendor.id}
-            animal = Animal(**animal_data)
+            animal = Animal(**template, user_id=vendor.id)
             db.session.add(animal)
 
     db.session.commit()
-    print("3 animals per vendor seeded successfully!")
+    print("Animals seeded successfully!")
+
+def seed_carts():
+    """Seed the Cart model with carts for customers."""
+    customers = BaseUser.query.filter_by(role="customer").all()
+    if not customers:
+        print("No customers found. Please seed users first.")
+        return
+
+    for customer in customers:
+        cart = Cart(user_id=customer.id)
+        db.session.add(cart)
+
+    db.session.commit()
+    print("Carts seeded successfully!")
+
+def seed_cart_items():
+    """Seed the CartItem model with items in the carts."""
+    carts = Cart.query.all()
+    animals = Animal.query.all()
+
+    if not carts or not animals:
+        print("No carts or animals found. Please seed carts and animals first.")
+        return
+
+    cart_items = [
+        {
+            "cart_id": carts[0].id,
+            "animal_id": animals[0].id,
+            "quantity": 2
+        },
+        {
+            "cart_id": carts[0].id,
+            "animal_id": animals[1].id,
+            "quantity": 1
+        }
+    ]
+
+    for item_data in cart_items:
+        cart_item = CartItem(**item_data)
+        db.session.add(cart_item)
+
+    db.session.commit()
+    print("CartItems seeded successfully!")
 
 def seed_orders():
-    """Seed the Orders model with initial data."""
-    users = User.query.filter_by(role="customer").all()
-    if not users:
-        print("No users found. Please seed users first.")
+    """Seed the Orders model with orders for customers."""
+    customers = BaseUser.query.filter_by(role="customer").all()
+    if not customers:
+        print("No customers found. Please seed users first.")
         return
 
     orders = [
         {
-            "user_id": users[0].id,
+            "user_id": customers[0].id,
             "status": "Pending",
-            "total_price": 2000.0
+            "total_price": 60000.0,
         }
     ]
 
@@ -142,7 +176,7 @@ def seed_orders():
     print("Orders seeded successfully!")
 
 def seed_order_items():
-    """Seed the OrderItem model with initial data."""
+    """Seed the OrderItem model with items in the orders."""
     orders = Orders.query.all()
     animals = Animal.query.all()
 
@@ -157,6 +191,13 @@ def seed_order_items():
             "quantity": 2,
             "unit_price": animals[0].price,
             "subtotal": animals[0].price * 2
+        },
+        {
+            "order_id": orders[0].id,
+            "animal_id": animals[1].id,
+            "quantity": 1,
+            "unit_price": animals[1].price,
+            "subtotal": animals[1].price
         }
     ]
 
@@ -168,19 +209,19 @@ def seed_order_items():
     print("OrderItems seeded successfully!")
 
 def seed_payments():
-    """Seed the Payments model with initial data."""
+    """Seed the Payments model with payments for orders."""
     orders = Orders.query.all()
-    users = User.query.filter_by(role="customer").all()
+    customers = BaseUser.query.filter_by(role="customer").all()
 
-    if not orders or not users:
-        print("No orders or users found. Please seed orders and users first.")
+    if not orders or not customers:
+        print("No orders or customers found. Please seed orders and users first.")
         return
 
     payments = [
         {
             "order_id": orders[0].id,
-            "user_id": users[0].id,
-            "amount": 2000.0,
+            "user_id": customers[0].id,
+            "amount": 60000.0,
             "status": "Paid"
         }
     ]
@@ -192,61 +233,15 @@ def seed_payments():
     db.session.commit()
     print("Payments seeded successfully!")
 
-def seed_cart():
-    """Seed the Cart model with initial data."""
-    users = User.query.filter_by(role="customer").all()
-
-    if not users:
-        print("No users found. Please seed users first.")
-        return
-
-    carts = [
-        {
-            "user_id": users[0].id
-        }
-    ]
-
-    for cart_data in carts:
-        cart = Cart(**cart_data)
-        db.session.add(cart)
-
-    db.session.commit()
-    print("Carts seeded successfully!")
-
-def seed_cart_items():
-    """Seed the CartItem model with initial data."""
-    carts = Cart.query.all()
-    animals = Animal.query.all()
-
-    if not carts or not animals:
-        print("No carts or animals found. Please seed carts and animals first.")
-        return
-
-    cart_items = [
-        {
-            "cart_id": carts[0].id,
-            "animal_id": animals[0].id,
-            "quantity": 1
-        }
-    ]
-
-    for item_data in cart_items:
-        cart_item = CartItem(**item_data)
-        db.session.add(cart_item)
-
-    db.session.commit()
-    print("CartItems seeded successfully!")
-
 if __name__ == "__main__":
     with app.app_context():
         print("Seeding the database...")
         clear_data()
-        seed_users()
-        seed_vendors()
+        seed_users_and_vendors()
         seed_animals()
+        seed_carts()
+        seed_cart_items()
         seed_orders()
         seed_order_items()
         seed_payments()
-        seed_cart()
-        seed_cart_items()
         print("Database seeding completed successfully!")
