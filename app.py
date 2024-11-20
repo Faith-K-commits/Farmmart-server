@@ -243,18 +243,15 @@ class PaymentResource(Resource):
 
 # Resource for CRUD operations on Animal entities
 class AnimalResource(Resource):
-    
-    # GET method to retrieve animals
     def get(self, animal_id=None):
         if animal_id:
             animal = db.session.get(Animal, animal_id)
             if not animal:
                 return make_response(jsonify({"error": "No animal found with this ID!"}), 404)
 
-            # Fetch vendor details
-            vendor = db.session.get(Vendor, animal.vendor_id)
+            vendor = db.session.get(BaseUser, animal.user_id)
             animal_data = animal.to_dict()
-            if vendor:
+            if vendor and vendor.role == "vendor":
                 animal_data.update({
                     "vendor_name": vendor.name,
                     "farm_name": vendor.farm_name,
@@ -262,46 +259,32 @@ class AnimalResource(Resource):
                     "email": vendor.email
                 })
             return make_response(jsonify(animal_data), 200)
-        
-        # Pagination: retrieve 'page' and 'per_page' from query parameters, with defaults
+
+        # Paginate all animals
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
+        animals_query = Animal.query.paginate(page=page, per_page=per_page, error_out=False)
+        animals = [animal.to_dict() for animal in animals_query.items]
 
-        try:
-            # Query and paginate animals, based on requested page and per_page
-            animals_query = Animal.query.paginate(page=page, per_page=per_page, error_out=False)
-            
-            # Serialize the animals on the current page
-            animals = [animal.to_dict() for animal in animals_query.items]
-            
-            # Add pagination metadata
-            pagination_info = {
-                "total_items": animals_query.total,
-                "total_pages": animals_query.pages,
-                "current_page": animals_query.page,
-                "per_page": animals_query.per_page,
-                "has_next": animals_query.has_next,
-                "has_prev": animals_query.has_prev,
-            }
+        pagination_info = {
+            "total_items": animals_query.total,
+            "total_pages": animals_query.pages,
+            "current_page": animals_query.page,
+            "per_page": animals_query.per_page,
+            "has_next": animals_query.has_next,
+            "has_prev": animals_query.has_prev,
+        }
+        return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
 
-            # Return animals and pagination info
-            return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
-
-        except Exception as e:
-            return make_response(jsonify({"error": str(e)}), 500)
-
-    # POST method to create a new animal entry
     def post(self):
-        data = request.form.to_dict()  # Get other form data as a dictionary
+        data = request.form.to_dict()
         try:
-            if 'file' in request.files: # Checks if dile was included in the request
-                file = request.files['file'] #If file is present, this line retireves the file object from the request
-                if file.filename != '': # This checks if the file has a name, ensuring that a file was actually selected and not just an empty file field.
-                    # If a valid file is present, this line uploads the file to Cloudinary.
+            if 'file' in request.files:
+                file = request.files['file']
+                if file.filename:
                     result = cloudinary.uploader.upload(file)
-                    data['image_url'] = result['secure_url'] # After successful upload, this line adds the secure URL of the uploaded image (provided by Cloudinary) to the data dictionary under the key 'image_url'.
-            
-            # Create and save new Animal instance
+                    data['image_url'] = result['secure_url']
+
             animal = Animal(**data)
             db.session.add(animal)
             db.session.commit()
@@ -310,31 +293,26 @@ class AnimalResource(Resource):
             db.session.rollback()
             return make_response(jsonify({"error": str(e)}), 400)
 
-    # PATCH method to update an existing animal entry
     def patch(self, animal_id):
         animal = db.session.get(Animal, animal_id)
         if not animal:
             return make_response(jsonify({"error": "No animal found with this ID!"}), 404)
-        
+
         data = request.form.to_dict()
         try:
             for key, value in data.items():
                 setattr(animal, key, value)
-
-            # Handle image update
             if 'file' in request.files:
                 file = request.files['file']
-                if file.filename != '':
+                if file.filename:
                     result = cloudinary.uploader.upload(file)
                     animal.image_url = result['secure_url']
-
             db.session.commit()
             return make_response(jsonify(animal.to_dict()), 200)
         except Exception as e:
             db.session.rollback()
             return make_response(jsonify({"error": str(e)}), 400)
 
-    # DELETE method to remove an animal entry by ID
     def delete(self, animal_id):
         animal = db.session.get(Animal, animal_id)
         if not animal:
@@ -348,27 +326,21 @@ class AnimalResource(Resource):
             return make_response(jsonify({"error": str(e)}), 400)
     
 class AnimalSearchResource(Resource):
-    # Search endpoint: /animals/search
     def get(self):
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
         category = request.args.get('category', type=str)
         breed = request.args.get('breed', type=str)
 
-        # Start with base query
         query = Animal.query
-
-        # Apply search filters
         if category:
             query = query.filter(Animal.category.ilike(f"%{category}%"))
         if breed:
             query = query.filter(Animal.breed.ilike(f"%{breed}%"))
 
-        # Paginate the search results
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
         animals_query = query.paginate(page=page, per_page=per_page, error_out=False)
         animals = [animal.to_dict() for animal in animals_query.items]
 
-        # Pagination metadata
         pagination_info = {
             "total_items": animals_query.total,
             "total_pages": animals_query.pages,
@@ -377,22 +349,15 @@ class AnimalSearchResource(Resource):
             "has_next": animals_query.has_next,
             "has_prev": animals_query.has_prev,
         }
-
         return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
 
 class AnimalFilterResource(Resource):
-    # Filter endpoint: /animals/filter
     def get(self):
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
         breed = request.args.get('breed', type=str)
         age_min = request.args.get('age_min', type=int)
         age_max = request.args.get('age_max', type=int)
 
-        # Start with base query
         query = Animal.query
-
-        # Apply filter criteria
         if breed:
             query = query.filter(Animal.breed.ilike(f"%{breed}%"))
         if age_min is not None:
@@ -400,11 +365,11 @@ class AnimalFilterResource(Resource):
         if age_max is not None:
             query = query.filter(Animal.age <= age_max)
 
-        # Paginate the filtered results
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
         animals_query = query.paginate(page=page, per_page=per_page, error_out=False)
         animals = [animal.to_dict() for animal in animals_query.items]
 
-        # Pagination metadata
         pagination_info = {
             "total_items": animals_query.total,
             "total_pages": animals_query.pages,
@@ -413,7 +378,6 @@ class AnimalFilterResource(Resource):
             "has_next": animals_query.has_next,
             "has_prev": animals_query.has_prev,
         }
-
         return make_response(jsonify({"animals": animals, "pagination": pagination_info}), 200)
 
 # Resource to get unique animal categories
@@ -680,7 +644,7 @@ class CartItemsResource(Resource):
             "current_page": cart_items.page
         }, 200
     
-
+#Vendor Animal management Resources
     
 # Register the resource with the API
 api.add_resource(UploadImage, '/upload')
