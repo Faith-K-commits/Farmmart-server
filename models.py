@@ -6,47 +6,106 @@ from datetime import datetime
 import re  # For email validation
 from flask_login import UserMixin
 
-class User(db.Model, UserMixin, SerializerMixin):
-    __tablename__ = 'users'
+class BaseUser(db.Model, UserMixin, SerializerMixin):
+    __tablename__ = 'base_users'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(50), nullable=False, default='customer') 
+    role = db.Column(db.String(50), nullable=False)  # 'admin', 'customer', or 'vendor'
 
-    # exclude password hash from serialization
-    serialize_only = ('id', 'name', 'email', 'role')
+    # Serialization
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'role': self.role,
+        }
 
-    # Relationships
-    cart = db.relationship('Cart', back_populates='user', uselist=False, cascade='all, delete-orphan')
-    orders = db.relationship('Orders', back_populates='user', cascade='all, delete-orphan')
-    payments = db.relationship('Payments', back_populates='user', cascade='all, delete-orphan')
+    # Define the polymorphic identity for inheritance
+    __mapper_args__ = {
+        'polymorphic_identity': 'base_user',
+        'polymorphic_on': role
+    }
 
-    # Check constraint to ensure only specific roles are allowed
-    __table_args__ = (
-        CheckConstraint(role.in_(['admin', 'customer']), name='check_valid_role'),
-    )
-
+    # Password management
     def set_password(self, password):
-
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 
     def check_password(self, password):
-
         return bcrypt.check_password_hash(self.password_hash, password)
 
+    # Utility for admin check
     def is_admin(self):
-        #Checks if the user has an admin role
         return self.role == 'admin'
 
     @staticmethod
     def is_valid_email(email):
-        #Validate the format of an email address using regular expression
+        # Validate the format of an email address using regex
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         return re.match(email_regex, email) is not None
 
     def __repr__(self):
+        return f'<BaseUser {self.name}, Role {self.role}>'
+
+class Admin(BaseUser):
+    # Define polymorphic identity for this subclass
+    __mapper_args__ = {
+        'polymorphic_identity': 'admin',
+    }
+
+    # Additional admin-specific methods or attributes (if any)
+    def __repr__(self):
+        return f'<Admin {self.name}, Role {self.role}>'
+
+    # Optional: Custom serialization
+    def serialize(self):
+        return super().serialize()
+
+class User(BaseUser):
+    # Define polymorphic identity for this subclass
+    __mapper_args__ = {
+        'polymorphic_identity': 'customer',
+    }
+
+    # User-specific relationships
+    cart = db.relationship('Cart', back_populates='user', uselist=False, cascade='all, delete-orphan')
+    orders = db.relationship('Orders', back_populates='user', cascade='all, delete-orphan')
+    payments = db.relationship('Payments', back_populates='user', cascade='all, delete-orphan')
+
+    def serialize(self):
+        data = super().serialize()  # Include base user data
+        # Add user-specific fields if needed
+        return data
+
+    def __repr__(self):
         return f'<User {self.name}, Role {self.role}>'
+
+
+class Vendor(BaseUser):
+    # Define polymorphic identity for this subclass
+    __mapper_args__ = {
+        'polymorphic_identity': 'vendor',
+    }
+
+    # Vendor-specific attributes
+    phone_number = db.Column(db.String(15), nullable=True)
+    farm_name = db.Column(db.String(100), nullable=True)
+
+    # Vendor-specific relationships
+    animals = db.relationship('Animal', back_populates='user', cascade='all, delete-orphan')
+    
+    def serialize(self):
+        # Include vendor-specific data
+        data = super().serialize()  # Include base user data
+        data['phone_number'] = self.phone_number
+        data['farm_name'] = self.farm_name
+        return data
+
+    def __repr__(self):
+        return f"<Vendor {self.name}, Farm '{self.farm_name}'>"
+
 
 # Animal model: represents animals listed for sale by vendors.
 class Animal(db.Model, SerializerMixin):
@@ -67,23 +126,25 @@ class Animal(db.Model, SerializerMixin):
     image_url = db.Column(db.String(255), nullable=True)
 
     # Foreign Key
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey('base_users.id', ondelete='CASCADE'))
 
-    serialize_only = ('id', 'name', 'price', 'available_quantity', 'description', 'category', 'breed', 'age', 'image_url')
+    serialize_only = ('id', 'name', 'price', 'available_quantity', 'description', 'category', 'breed', 'age', 'image_url', 'user_id')
 
     # Relationship
-    vendor = db.relationship('Vendor', back_populates='animals')
+    user = db.relationship('Vendor', back_populates='animals')
     cart_items = db.relationship('CartItem', back_populates='animal', cascade='all, delete-orphan')
     order_items = db.relationship('OrderItem', back_populates='animal', cascade='all, delete-orphan')
 
     def __repr__(self):
-        return (f"<Animal(id={self.id}, name='{self.name}', category='{self.category}', breed='{self.breed}', age='{self.age}', price='{self.price}', image_url='{self.image_url}', vendor_id='{self.vendor_id}')>")
+        return (f"<Animal(id={self.id}, name='{self.name}', category='{self.category}', breed='{self.breed}', age='{self.age}', price='{self.price}', image_url='{self.image_url}', user_id='{self.user_id}')>")
+
+        
 class Orders(db.Model, SerializerMixin):
     
     __tablename__ = 'orders'
     
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))
+    user_id = db.Column(db.Integer, db.ForeignKey('base_users.id', ondelete='CASCADE'))
     status = db.Column(db.String, default='Pending', nullable=False)
     total_price = db.Column(db.Float)
     created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -128,7 +189,7 @@ class Payments(db.Model, SerializerMixin):
     
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey('orders.id', ondelete='CASCADE'))
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'))
+    user_id = db.Column(db.Integer, db.ForeignKey('base_users.id', ondelete='CASCADE'))
     amount = db.Column(db.Float)
     status = db.Column(db.String)
     payment_date = db.Column(db.DateTime, default=db.func.current_timestamp())
@@ -144,40 +205,6 @@ class Payments(db.Model, SerializerMixin):
     def __repr__(self):
         return f"Payments('{self.id}', '{self.amount}', '{self.status}', '{self.payment_date}')"
 
-class Vendor(db.Model, SerializerMixin):
-    __tablename__ = 'vendors'
-
-    # Primary Key: Unique identifier for each vendor
-    id = db.Column(db.Integer, primary_key=True)
-
-    # Basic vendor attributes
-    name = db.Column(db.String(50), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    phone_number = db.Column(db.String(15), nullable=True)
-    farm_name = db.Column(db.String(100), nullable=True)
-
-    # Relationships
-    animals = db.relationship('Animal', back_populates='vendor', cascade='all, delete-orphan')
-
-    def set_password(self, password):
-
-        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-
-    def check_password(self, password):
-
-        return bcrypt.check_password_hash(self.password_hash, password)
-
-    def __repr__(self):
-        return (f"<Vendor(id={self.id}, name='{self.name}', email='{self.email}', "
-                f"phone_number='{self.phone_number}', farm_name='{self.farm_name}')>")
-
-
-# def set_password(self, password):
-#     self.password = bcrypt.generate_password_hash(password).decode('utf-8')
-
-# def check_password(self, password):
-#     return bcrypt.check_password_hash(self.password, password)
 
 class Cart(db.Model):
     __tablename__ = 'carts'
@@ -186,7 +213,7 @@ class Cart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     # Foreign Key linking to User
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('base_users.id'), nullable=False)
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Cart creation date

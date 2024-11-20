@@ -35,7 +35,9 @@ login_manager.login_view = 'login'
 # Load the user from the database for Flask-Login
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(user_id)
+    with current_app.app_context():
+        from models import BaseUser
+        return BaseUser.query.get(user_id)
 
 # Cloudinary configuration
 cloudinary.config(
