@@ -2,7 +2,7 @@ from functools import wraps
 from flask import make_response, jsonify, request, current_app
 from flask_restful import Resource
 from config import db, app, api
-from models import Animal, Orders, OrderItem, Payments, Cart, CartItem, User, Vendor
+from models import Animal, Orders, OrderItem, Payments, Cart, CartItem, BaseUser, Vendor, User
 import cloudinary.uploader
 from datetime import datetime, timedelta 
 from flask_login import login_user, logout_user, login_required
@@ -680,123 +680,6 @@ class CartItemsResource(Resource):
             "current_page": cart_items.page
         }, 200
     
-class VendorResource(Resource):
-   def get(self, vendor_id=None):
-       if vendor_id:
-           # Fetch a single vendor by their ID
-           vendor = Vendor.query.get_or_404(vendor_id)
-           vendor_data = {
-               'id': vendor.id,
-               'name': vendor.name,
-               'email': vendor.email,
-               'phone_number': vendor.phone_number,
-               'farm_name': vendor.farm_name
-           }
-           return make_response(jsonify(vendor_data), 200)
-       else:
-           # Pagination
-           page = request.args.get('page', 1, type=int)
-           per_page = request.args.get('per_page', 5, type=int)
-           paginated_vendors = Vendor.query.paginate(page=page, per_page=per_page, error_out=False)
-           vendors = paginated_vendors.items
-           vendors_data = [{
-               'id': vendor.id,
-               'name': vendor.name,
-               'email': vendor.email,
-               'phone_number': vendor.phone_number,
-               'farm_name': vendor.farm_name
-           } for vendor in vendors]
-
-
-           response = {
-               'vendors': vendors_data,
-               'meta': {
-                   'current_page': paginated_vendors.page,
-                   'per_page': paginated_vendors.per_page,
-                   'total_items': paginated_vendors.total,
-                   'total_pages': paginated_vendors.pages,
-                   'has_next': paginated_vendors.has_next,
-                   'has_prev': paginated_vendors.has_prev,
-                   'next_page': paginated_vendors.next_num if paginated_vendors.has_next else None,
-                   'prev_page': paginated_vendors.prev_num if paginated_vendors.has_prev else None
-               }
-           }
-          
-           return make_response(jsonify(response), 200)
-
-
-   def patch(self, vendor_id):
-       vendor = Vendor.query.get_or_404(vendor_id)
-       data = request.get_json()
-
-
-       # Update fields if present in the request body
-       if 'name' in data:
-           vendor.name = data['name']
-       if 'email' in data:
-           vendor.email = data['email']
-       if 'phone_number' in data:
-           vendor.phone_number = data['phone_number']
-       if 'farm_name' in data:
-           vendor.farm_name = data['farm_name']
-
-
-       db.session.commit()
-
-
-       return make_response(jsonify({'message': 'Vendor updated successfully'}), 200)
-
-
-   def delete(self, vendor_id):
-       vendor = Vendor.query.get_or_404(vendor_id)
-       db.session.delete(vendor)
-       db.session.commit()
-
-
-       return make_response(jsonify({'message': f'Vendor {vendor_id} deleted successfully'}), 204)
-
-
-class VendorCreateResource(Resource):
-   def post(self):
-       data = request.get_json()
-
-
-       # Validate input data
-       if 'name' not in data or 'email' not in data or 'password' not in data:
-           return {'error': 'Name, email, and password are required fields'}, 400
-
-
-       # Check if email already exists
-       existing_vendor = Vendor.query.filter_by(email=data['email']).first()
-       if existing_vendor:
-           return {'error': 'Email already in use'}, 400
-
-
-       # Create a new vendor
-       vendor = Vendor(
-           name=data['name'],
-           email=data['email'],
-           phone_number=data.get('phone_number'),
-           farm_name=data.get('farm_name')
-       )
-       vendor.set_password(data['password'])
-
-
-       db.session.add(vendor)
-       db.session.commit()
-
-
-       return make_response(jsonify({'message': 'Vendor created successfully', 'id': vendor.id}), 201)
-
-
-
-
-  
-# Register the resource with the API
-api.add_resource(VendorCreateResource, '/vendors')  # POST method to create a new vendoR
-api.add_resource(VendorResource, '/vendors', '/vendors/<int:vendor_id>')  # GET, PATCH, DELETE methods
-
-
 
     
 # Register the resource with the API
@@ -815,6 +698,8 @@ api.add_resource(CategoryResource, '/categories')
 api.add_resource(BreedResource, '/breeds')
 
 
+
+### USER-SPECIFIC RESOURCES ###
 class RegisterResource(Resource):
     def post(self):
         data = request.get_json()
@@ -822,73 +707,137 @@ class RegisterResource(Resource):
         name = data.get('name')
         email = data.get('email')
         password = data.get('password')
-        role = data.get('role', 'customer')#default to customer if not provided
+        role = data.get('role', 'customer')  # Default to 'customer' if not provided
 
+        # Additional fields for vendors
+        phone_number = data.get('phone_number')
+        farm_name = data.get('farm_name')
+
+        # Validate required fields
         if not all([name, email, password]):
-            return{'error': 'Name, Email and password required'}, 400
+            return {'error': 'Name, email, and password are required'}, 400
 
-        if not User.is_valid_email(email):
-            return {'error': 'Enter a valid Email'}, 400
+        # Validate email format
+        if not BaseUser.is_valid_email(email):
+            return {'error': 'Enter a valid email'}, 400
 
-        existing_user = User.query.filter_by(email=email).first()
+        # Check if the email is already in use
+        existing_user = BaseUser.query.filter_by(email=email).first()
         if existing_user:
-            return {'error': 'Email already in use'}
+            return {'error': 'Email already in use'}, 400
 
-        new_user = User(name=name, email=email, role=role)
-        new_user.set_password(password)
-
+        # Create the appropriate user role
         try:
+            if role == 'vendor':
+                if not phone_number or not farm_name:
+                    return {'error': 'Phone number and farm name are required for vendors'}, 400
+                new_user = Vendor(
+                    name=name,
+                    email=email,
+                    role=role,
+                    phone_number=phone_number,
+                    farm_name=farm_name
+                )
+            else:  # Default to creating a regular customer
+                new_user = User(
+                    name=name,
+                    email=email,
+                    role=role
+                )
+            
+            # Hash and set the password
+            new_user.set_password(password)
+
+            # Save to the database
             db.session.add(new_user)
             db.session.commit()
-            return {'message': 'User created successfully', 'user': new_user.to_dict()}, 201
+            return {'message': 'User created successfully', 'user': new_user.serialize()}, 201
+
         except Exception as e:
             db.session.rollback()
-            return {'error': 'An error occurred while creating the user'}, 500
+            return {'error': str(e)}, 500
 
-        return {'message': 'User registered successfully', 'user': new_user.to_dict()}, 201
 
 api.add_resource(RegisterResource, '/register')
 
 
 class UserListResource(Resource):
     def get(self):
-        """Fetches paginated users."""
-        page = request.args.get('page', 1, type=int)  # Default to page 1
-        per_page = request.args.get('per_page', 10, type=int)  # Default to 10 users per page
+        
+        try:
+            # Retrieve pagination parameters
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 10, type=int)
 
-        paginated_users = User.query.paginate(page=page, per_page=per_page, error_out=False)
-        users = [user.to_dict() for user in paginated_users.items]
+            # Validation for positive page and per_page values
+            if page <= 0 or per_page <= 0:
+                return {'error': 'Page and per_page must be greater than 0'}, 400
 
-        return {
-            'users': users,
-            'total': paginated_users.total,
-            'pages': paginated_users.pages,
-            'current_page': paginated_users.page,
-            'per_page': paginated_users.per_page
-        }, 200
+            # Query all base_users (admin, customer, vendor) and paginate
+            paginated_users = BaseUser.query.paginate(page=page, per_page=per_page, error_out=False)
 
-api.add_resource(UserListResource, '/users' )
+            # Serialize users (this includes all types: admin, customer, vendor)
+            users = [user.serialize() for user in paginated_users.items]
+
+            # Return pagination info along with user data
+            return {
+                'users': users,
+                'total': paginated_users.total,
+                'pages': paginated_users.pages,
+                'current_page': paginated_users.page,
+                'per_page': paginated_users.per_page
+            }, 200
+
+        except Exception as e:
+            return {'error': str(e)}, 500
+
+api.add_resource(UserListResource, '/users')  # Ensure endpoint uses plural 'users'
+
 
 class DeleteUserResource(Resource):
     def delete(self, user_id):
         """Deletes a user by their ID."""
-        user = User.query.get(user_id)
-        if not user:
-            return {'error': 'User not found'}, 404
-
         try:
+            # Fetch the user from the database
+            user = BaseUser.query.get(user_id)
+            
+            if not user:
+                return {'error': f'User with ID {user_id} not found'}, 404
+
+            # Perform any user-specific cleanup if required (e.g., related data)
+            if isinstance(user, Vendor):
+                # Cleanup specific to vendors (e.g., delete animals or associated resources)
+                for animal in user.animals:
+                    db.session.delete(animal)
+            elif isinstance(user, User):
+                # Cleanup specific to customers (e.g., delete cart, orders, etc.)
+                if user.cart:
+                    db.session.delete(user.cart)
+                for order in user.orders:
+                    db.session.delete(order)
+                for payment in user.payments:
+                    db.session.delete(payment)
+            # No special cleanup required for Admin users in this example
+
+            # Delete the user
             db.session.delete(user)
             db.session.commit()
-            return {'message': 'User deleted successfully'}, 200
+
+            return {'message': f'User with ID {user_id} deleted successfully'}, 200
+
         except Exception as e:
             db.session.rollback()
-            return {'error': 'An error occurred while deleting the user'}, 500
-
-api.add_resource(DeleteUserResource, '/users/<int:user_id>' )
+            return {'error': f'An error occurred while deleting the user: {str(e)}'}, 500
 
 
+api.add_resource(DeleteUserResource, '/users/<int:user_id>')
+
+
+
+### AUTHENTICATION ###
 class Login(Resource):
     def post(self):
+       
         data = request.get_json()
 
         email = data.get('email')
@@ -897,91 +846,83 @@ class Login(Resource):
         if not email or not password:
             return make_response({"error": "Email and password are required"}, 400)
 
-        # Find the user in the database by email
-        user = User.query.filter_by(email=email).first()
+        # Attempt to find the user by email
+        try:
+            user = BaseUser.query.filter_by(email=email).first()
 
-        if user and user.check_password(password):
-            # Generate a JWT token using the app's SECRET_KEY
-            token = jwt.encode(
-                {
-                    "id": user.id,
-                    "exp": datetime.utcnow() + timedelta(hours=24)  
-                },
-                current_app.config['SECRET_KEY'],
-                algorithm="HS256"
-            )
-            
+            if user and user.check_password(password):
+                # Generate a JWT token
+                token = jwt.encode(
+                    {
+                        "id": user.id,
+                        "role": user.role,
+                        "exp": datetime.utcnow() + timedelta(hours=24)
+                    },
+                    current_app.config['SECRET_KEY'],
+                    algorithm="HS256"
+                )
 
-            # Log the user in with Flask-Login
-            login_user(user)
+                # Log the user in
+                login_user(user)
 
-            # Return the token and role
-            return make_response({
-                "token": token,
-                "role": user.role,
-                "name": user.name
-            }, 200)
+                return make_response({
+                    "message": "Login successful",
+                    "token": token,
+                    "user": user.serialize()  # Return user details in response
+                }, 200)
 
-        return make_response({"error": "Invalid credentials"}, 401)
-        
+            return make_response({"error": "Invalid credentials"}, 401)
+
+        except Exception as e:
+            current_app.logger.error(f"Error during login: {str(e)}")
+            return make_response({"error": "An internal error occurred"}, 500)
+
 api.add_resource(Login, '/login')
+
 
 class Logout(Resource):
     @login_required
     def post(self):
-        logout_user()
-        return make_response({"message": "Successfully logged out"}, 200)
+        try:
+            logout_user()
+            return make_response({"message": "Logout successful"}, 200)
+        except Exception as e:
+            current_app.logger.error(f"Error during logout: {str(e)}")
+            return make_response({"error": "An internal error occurred"}, 500)
 
 api.add_resource(Logout, '/logout')
 
-class VendorLogin(Resource):
-    def post(self):
+class UserPatchResource(Resource):
+    def patch(self, user_id):
+        """Update user details by their ID."""
+        user = User.query.get_or_404(user_id)
         data = request.get_json()
 
-        email = data.get('email')
-        password = data.get('password')
+        # Validate and update fields if present in the request body
+        if 'name' in data:
+            user.name = data['name']
+        if 'email' in data:
+            if not BaseUser.is_valid_email(data['email']):
+                return {'error': 'Invalid email format'}, 400
+            # Ensure the new email is not already in use
+            existing_user = BaseUser.query.filter_by(email=data['email']).first()
+            if existing_user and existing_user.id != user.id:
+                return {'error': 'Email already in use'}, 400
+            user.email = data['email']
+        if 'role' in data:
+            if data['role'] not in ['customer', 'admin']:
+                return {'error': 'Invalid role specified'}, 400
+            user.role = data['role']
 
-        if not email or not password:
-            return make_response({"error": "Email and password are required"}, 400)
-
-        # Find the vendor in the database by email
-        vendor = Vendor.query.filter_by(email=email).first()
-
-        if vendor and vendor.check_password(password):
-            # Generate a JWT token using the app's SECRET_KEY
-            token = jwt.encode(
-                {
-                    "id": vendor.id,
-                    "exp": datetime.utcnow() + timedelta(hours=24)  
-                },
-                current_app.config['SECRET_KEY'],
-                algorithm="HS256"
-            )
-
-            # Log the vendor in with Flask-Login
-            login_user(vendor)
-
-            # Return the token and vendor details
-            return make_response({
-                "token": token,
-                "name": vendor.name,
-                "farm_name": vendor.farm_name
-            }, 200)
-
-        return make_response({"error": "Invalid credentials"}, 401)
-
-api.add_resource(VendorLogin, '/vendor/login')
+        try:
+            db.session.commit()
+            return {'message': 'User updated successfully', 'user': user.serialize()}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {'error': 'An error occurred while updating the user'}, 500
 
 
-class VendorLogout(Resource):
-    @login_required
-    def post(self):
-        logout_user()
-        return make_response({"message": "Successfully logged out"}, 200)
-
-api.add_resource(VendorLogout, '/vendor/logout')
-
-
+api.add_resource(UserPatchResource, '/users/<int:user_id>')
 
 if __name__ == '__main__':
     app.run(debug=True)
