@@ -207,6 +207,88 @@ class Payments(db.Model, SerializerMixin):
         return f"Payments('{self.id}', '{self.amount}', '{self.status}', '{self.payment_date}')"
 
 
+# class Cart(db.Model):
+#     __tablename__ = 'carts'
+
+#     # Primary Key
+#     id = db.Column(db.Integer, primary_key=True)
+
+#     # Foreign Key linking to User
+#     user_id = db.Column(db.Integer, db.ForeignKey('base_users.id'), nullable=False)
+
+#     # Timestamps
+#     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Cart creation date
+
+#     # Relationships
+#     cart_items = db.relationship('CartItem', back_populates='cart', cascade='all, delete-orphan')
+#     user = db.relationship('User', back_populates='cart')
+
+#     def __repr__(self):
+#         return f"<Cart user_id={self.user_id} created_at={self.created_at}>"
+
+#     def to_dict(self, include_user=False):
+#         """
+#         Serialize Cart to dictionary. Optionally include User info without including `user.cart`
+#         to avoid recursion.
+#         """
+#         data = {
+#             'id': self.id,
+#             'user_id': self.user_id,
+#             'created_at': self.created_at.isoformat(),
+#             'cart_items': [item.to_dict() for item in self.cart_items]  # Serialize CartItems without circular reference
+#         }
+#         if include_user:
+#             data['user'] = {
+#                 'id': self.user.id,
+#                 'name': self.user.name  # Add other relevant fields here, excluding `cart` relationship to avoid recursion
+#             }
+#         return data
+
+# class CartItem(db.Model):
+#     __tablename__ = 'cart_items'  # table name in the database
+
+#     # Primary key: Unique identifier for each CartItem entry
+#     id = db.Column(db.Integer, primary_key=True)
+
+#     # Foreign Key linking to the Cart table, represents the cart to which this item belongs
+#     cart_id = db.Column(db.Integer, db.ForeignKey('carts.id'), nullable=False)
+
+#     # Foreign Key linking to the Animal table, represents the animal product being added to the cart
+#     animal_id = db.Column(db.Integer, db.ForeignKey('animals.id'), nullable=False)
+
+#     # Quantity of the animal product being added to the cart, default is 1
+#     quantity = db.Column(db.Integer, nullable=False, default=1)
+
+#     # Timestamp of when the item was added to the cart, defaults to the current UTC time
+#     added_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+#     # Relationship to the Cart model
+#     cart = db.relationship('Cart', back_populates='cart_items')
+
+#     # Relationship to the Animal model
+#     animal = db.relationship('Animal', back_populates='cart_items')
+
+#     def __repr__(self):
+#         return f"<CartItem cart_id={self.cart_id} animal_id={self.animal_id} quantity={self.quantity}>"
+
+#     def to_dict(self, include_animal=False):
+#         """
+#         Serialize CartItem to dictionary, optionally including related Animal details to avoid circular references.
+#         """
+#         data = {
+#             'id': self.id,
+#             'cart_id': self.cart_id,
+#             'animal_id': self.animal_id,
+#             'quantity': self.quantity,
+#             'added_at': self.added_at.isoformat()
+#         }
+#         if include_animal:
+#             data['animal'] = {
+#                 'id': self.animal.id,
+#                 'name': self.animal.name,  # Add other relevant fields here, excluding `cart_items` to avoid recursion
+#             }
+#         return data
+
 class Cart(db.Model):
     __tablename__ = 'carts'
 
@@ -218,6 +300,7 @@ class Cart(db.Model):
 
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # Cart creation date
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Last updated timestamp
 
     # Relationships
     cart_items = db.relationship('CartItem', back_populates='cart', cascade='all, delete-orphan')
@@ -235,6 +318,7 @@ class Cart(db.Model):
             'id': self.id,
             'user_id': self.user_id,
             'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
             'cart_items': [item.to_dict() for item in self.cart_items]  # Serialize CartItems without circular reference
         }
         if include_user:
@@ -243,9 +327,9 @@ class Cart(db.Model):
                 'name': self.user.name  # Add other relevant fields here, excluding `cart` relationship to avoid recursion
             }
         return data
-
+    
 class CartItem(db.Model):
-    __tablename__ = 'cart_items'  # table name in the database
+    __tablename__ = 'cart_items'
 
     # Primary key: Unique identifier for each CartItem entry
     id = db.Column(db.Integer, primary_key=True)
@@ -261,6 +345,9 @@ class CartItem(db.Model):
 
     # Timestamp of when the item was added to the cart, defaults to the current UTC time
     added_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Timestamp of when the item was last updated
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationship to the Cart model
     cart = db.relationship('Cart', back_populates='cart_items')
@@ -280,7 +367,10 @@ class CartItem(db.Model):
             'cart_id': self.cart_id,
             'animal_id': self.animal_id,
             'quantity': self.quantity,
-            'added_at': self.added_at.isoformat()
+            'added_at': self.added_at.isoformat(),
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'animal_price': self.animal.price,  # Include animal price
+            'animal_image_url': self.animal.image_url  # Include animal image URL
         }
         if include_animal:
             data['animal'] = {
@@ -288,4 +378,3 @@ class CartItem(db.Model):
                 'name': self.animal.name,  # Add other relevant fields here, excluding `cart_items` to avoid recursion
             }
         return data
-
