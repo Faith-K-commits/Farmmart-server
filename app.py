@@ -865,15 +865,6 @@ class CheckoutCartResource(Resource):
 
         return {
             "status": "success",
-<<<<<<< HEAD
-            "cart_items": items_data,
-            "total_items": cart_items.total,
-            "total_pages": cart_items.pages,
-            "current_page": cart_items.page
-        }, 200
-    
-#Vendor Animal management Resources
-=======
             "message": "Checkout successful",
             "order_id": order.id,
             "total_price": total_price
@@ -887,7 +878,6 @@ def get_cart(cart_id):
     """
     cart = Cart.query.get_or_404(cart_id)
     return jsonify(cart.to_dict())
->>>>>>> development
     
 # Register the resource with the API
 api.add_resource(UploadImage, '/upload')
