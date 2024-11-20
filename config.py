@@ -20,7 +20,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///dat
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy()
 migrate = Migrate(app, db)
-bycrypt = Bcrypt(app)
+bcrypt = Bcrypt(app)
 CORS(app)
 api=Api(app)
 db.init_app(app)
