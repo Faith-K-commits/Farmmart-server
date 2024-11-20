@@ -1,3 +1,4 @@
+from functools import wraps
 from flask import make_response, jsonify, request, current_app
 from flask_restful import Resource
 from config import db, app, api
@@ -6,6 +7,8 @@ import cloudinary.uploader
 from datetime import datetime, timedelta 
 from flask_login import login_user, logout_user, login_required
 import jwt
+import random
+import json
 
 
 @app.route('/')
@@ -36,36 +39,25 @@ class UploadImage(Resource):
             return {"url": result['secure_url']}, 200
         except Exception as e:
             # Handle any exceptions and return an error message
-            return {"error": str(e)}, 500
-        
+            return {"error": str(e)}, 500        
 class OrdersResource(Resource):
     def get(self, order_id=None):
         if order_id:
             # Fetch a single order by its ID
-            order = Orders.query.get_or_404(order_id)
-            order_data = {
-                'id': order.id,
-                'user_id': order.user_id,
-                'status': order.status,
-                'total_price': order.calculate_total_price(),
-                'created_at': order.created_at,
-                'updated_at': order.updated_at
-            }
+            order = Orders.query.filter_by(id=order_id).first()
+            if not order:
+                return make_response(jsonify({'error': 'Order not found!'}), 404)
+            order_data = order.to_dict()
+
             return make_response(jsonify(order_data), 200)
         else:
             page = request.args.get('page', 1, type=int)
             per_page = request.args.get('per_page', 5, type=int)
             paginated_orders = Orders.query.paginate(page=page, per_page=per_page, error_out=False)
             orders = paginated_orders.items
-            orders_data = [{
-                'id': order.id,
-                'user_id': order.user_id,
-                'status': order.status,
-                'total_price': order.calculate_total_price(),
-                'created_at': order.created_at,
-                'updated_at': order.updated_at
-            } for order in orders]
-            
+
+            orders_data = [order.to_dict() for order in orders]
+
             response = {
                 'orders': orders_data,
                 'meta': {
@@ -79,7 +71,6 @@ class OrdersResource(Resource):
                     'prev_page': paginated_orders.prev_num if paginated_orders.has_prev else None
                 }
             }
-            
             return make_response(jsonify(response), 200)
 
     def post(self):
@@ -90,7 +81,7 @@ class OrdersResource(Resource):
             return {'error': 'Invalid order status'}, 400
         
         # Calculate total price before creating the order
-        order = Orders(user_id=data['user_id'], status=data['status'])
+        order = Orders(user_id=request.user_id, status=data['status'])
         db.session.add(order)
         db.session.commit()
 
@@ -303,12 +294,12 @@ class AnimalResource(Resource):
     def post(self):
         data = request.form.to_dict()  # Get other form data as a dictionary
         try:
-            if 'file' in request.files:
-                file = request.files['file']
-                if file.filename != '':
-                    # Upload the file to Cloudinary
+            if 'file' in request.files: # Checks if dile was included in the request
+                file = request.files['file'] #If file is present, this line retireves the file object from the request
+                if file.filename != '': # This checks if the file has a name, ensuring that a file was actually selected and not just an empty file field.
+                    # If a valid file is present, this line uploads the file to Cloudinary.
                     result = cloudinary.uploader.upload(file)
-                    data['image_url'] = result['secure_url']
+                    data['image_url'] = result['secure_url'] # After successful upload, this line adds the secure URL of the uploaded image (provided by Cloudinary) to the data dictionary under the key 'image_url'.
             
             # Create and save new Animal instance
             animal = Animal(**data)
@@ -440,6 +431,17 @@ class BreedResource(Resource):
         breeds = Animal.query.with_entities(Animal.breed).distinct().all()
         # Convert breeds to a list of strings and return as JSON
         return jsonify([breed[0] for breed in breeds])
+
+# Fetches Random selection of animals
+@app.route("/animals/featured", methods=["GET"])
+def get_featured_animals():
+    try:
+        # Fetch a random selection of 5 animals
+        random_animals = Animal.query.order_by(db.func.random()).limit(5).all()
+        animals_data = [animal.to_dict() for animal in random_animals]
+        return jsonify({"featured_animals": animals_data}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 ## Cart Resource - Retrieve the user's cart
 class CartResource(Resource):

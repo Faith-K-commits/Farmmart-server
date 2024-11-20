@@ -78,34 +78,34 @@ def seed_animals():
 
     animal_templates = [
         {
-            "name": "Brown Cow",
-            "price": 1500.0,
+            "name": "Friesian Cow",
+            "price": 260000.0,
             "available_quantity": 10,
-            "description": "A healthy brown cow for dairy production.",
+            "description": "A healthy female black and white cow for dairy production.",
             "category": "Cattle",
-            "breed": "Holstein",
+            "breed": "Holstein Friesian",
             "age": 5,
-            "image_url": "https://example.com/images/brown-cow.jpg"
+            "image_url": "https://res.cloudinary.com/dukxm7ilt/image/upload/v1731665187/plb4v7ksb8ckr2g5xqtt.jpg"
         },
         {
-            "name": "Black Sheep",
-            "price": 500.0,
+            "name": "White Sheep",
+            "price": 30000.0,
             "available_quantity": 15,
-            "description": "Young black sheep with soft wool.",
+            "description": "Young white sheep with soft wool.",
             "category": "Sheep",
             "breed": "Merino",
             "age": 2,
-            "image_url": "https://example.com/images/black-sheep.jpg"
+            "image_url": "https://res.cloudinary.com/dukxm7ilt/image/upload/v1731665412/vzplzy8uhxufuubpzeuj.jpg"
         },
         {
             "name": "White Goat",
-            "price": 700.0,
+            "price": 25000.0,
             "available_quantity": 8,
-            "description": "A playful white goat, perfect for grazing.",
+            "description": "A playful white goat, perfect for grazing and milking.",
             "category": "Goat",
             "breed": "Saanen",
             "age": 3,
-            "image_url": "https://example.com/images/white-goat.jpg"
+            "image_url": "https://res.cloudinary.com/dukxm7ilt/image/upload/v1731665974/ghpf0zct2ac6awdsrd2f.jpg"
         }
     ]
 
