@@ -71,7 +71,7 @@ def seed_animals():
 
     animal_templates = [
         {
-            "name": "Friesian Cow",
+            "name": "Friesian Cowz",
             "price": 260000.0,
             "available_quantity": 10,
             "description": "A healthy female black and white cow for dairy production.",
