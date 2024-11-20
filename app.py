@@ -444,7 +444,243 @@ def get_featured_animals():
         return jsonify({"error": str(e)}), 500
 
 ## Cart Resource - Retrieve the user's cart
-class CartResource(Resource):
+# class CartResource(Resource):
+#     def serialize_datetime(self, obj):
+#         """
+#         Serializes datetime objects into string format.
+#         """
+#         if isinstance(obj, datetime):
+#             return obj.isoformat()  # Convert datetime to ISO 8601 string format
+#         raise TypeError("Type not serializable")
+
+#     def get(self, user_id):
+#         """
+#         Retrieve the user's cart details by user ID.
+#         If the cart doesn't exist, return a 404 error.
+#         """
+#         # Find or create a cart associated with the given user_id
+#         cart = Cart.query.filter_by(user_id=user_id).first()
+#         if not cart:
+#             cart = Cart(user_id=user_id)
+#             db.session.add(cart)
+#             db.session.commit()
+
+#         # Get cart items with animal names
+#         cart_items = []
+#         for cart_item in cart.cart_items:
+#             animal = db.session.get(Animal, cart_item.animal_id)
+#             if animal:
+#                 cart_items.append({
+#                     "id": cart_item.id,
+#                     "cart_id": cart_item.cart_id,
+#                     "animal_id": cart_item.animal_id,
+#                     "quantity": cart_item.quantity,
+#                     "added_at": self.serialize_datetime(cart_item.added_at),  # Serialize datetime
+#                     "animal_name": animal.name  # Add the animal name to the cart item
+#                 })
+
+#         # Return the cart details along with animal names
+#         response = {
+#             "status": "success",
+#             "cart": {
+#                 "id": cart.id,
+#                 "user_id": cart.user_id,
+#                 "created_at": self.serialize_datetime(cart.created_at),  # Serialize datetime
+#                 "cart_items": cart_items
+#             }
+#         }
+
+#         # Use jsonify to automatically convert the response to JSON
+#         return jsonify(response)
+
+# class AddItemToCartResource(Resource):
+#     def post(self, user_id):
+#         """
+#         Add an item to the user's cart.
+#         """
+#         data = request.get_json()
+#         animal_id = data.get('animal_id')
+#         quantity = data.get('quantity')
+
+#         if not animal_id or not quantity or quantity <= 0:
+#             return {"status": "error", "message": "Invalid animal_id or quantity"}, 400
+
+#         # Retrieve the user's cart, create one if it doesn't exist
+#         cart = Cart.query.filter_by(user_id=user_id).first()
+#         if not cart:
+#             cart = Cart(user_id=user_id)
+#             db.session.add(cart)
+
+#         # Check if the animal exists in the database
+#         animal = Animal.query.get(animal_id)
+#         if not animal:
+#             return {"status": "error", "message": "Animal not found"}, 404
+
+#         # Check if the requested quantity exceeds available available_quantity
+#         if animal.available_quantity < quantity:
+#             return {"status": "error", "message": "Not enough available_quantity available"}, 400
+
+#         # Check if the animal is already in the cart
+#         cart_item = CartItem.query.filter_by(cart_id=cart.id, animal_id=animal_id).first()
+#         if cart_item:
+#             # If the item is already in the cart, just update the quantity
+#             cart_item.quantity += quantity
+#         else:
+#             # If the item isn't in the cart, create a new cart item
+#             cart_item = CartItem(cart_id=cart.id, animal_id=animal_id, quantity=quantity)
+#             db.session.add(cart_item)
+
+#         # Adjust the animal available_quantity accordingly
+#         animal.available_quantity -= quantity
+
+#         try:
+#             db.session.commit()  # Commit changes
+#         except Exception as e:
+#             db.session.rollback()
+#             return {"status": "error", "message": "Failed to add item to cart"}, 500
+
+#         return {
+#             "status": "success",
+#             "message": "Item added to cart",
+#             "cart_item": cart_item.to_dict()
+#         }, 201
+
+# class UpdateCartItemQuantityResource(Resource):
+#     def put(self, user_id, animal_id):
+#         """
+#         Update the quantity of an item in the user's cart and adjust available_quantity.
+#         """
+#         data = request.get_json()
+#         new_quantity = data.get('quantity')
+
+#         if not new_quantity or new_quantity <= 0:
+#             return {"status": "error", "message": "Quantity must be greater than 0"}, 400
+
+#         # Retrieve the user's cart
+#         cart = Cart.query.filter_by(user_id=user_id).first()
+#         if not cart:
+#             return {"status": "error", "message": "Cart not found"}, 404
+
+#         # Find the cart item to update
+#         cart_item = CartItem.query.filter_by(cart_id=cart.id, animal_id=animal_id).first()
+#         if not cart_item:
+#             return {"status": "error", "message": "Item not in cart"}, 404
+
+#         # Check available_quantity availability for the new quantity
+#         animal = Animal.query.get(animal_id)
+#         if animal and animal.available_quantity < new_quantity - cart_item.quantity:
+#             return {"status": "error", "message": "Not enough available_quantity"}, 400
+
+#         # Update item quantity and adjust animal available_quantity
+#         if animal:
+#             stock_diff = new_quantity - cart_item.quantity
+#             if stock_diff > 0:
+#                 animal.available_quantity -= stock_diff  # Subtract from available_quantity when quantity increases
+#             elif stock_diff < 0:
+#                 animal.available_quantity += abs(stock_diff)  # Add to available_quantity when quantity decreases
+
+#         cart_item.quantity = new_quantity
+#         try:
+#             db.session.commit()  # Commit changes
+#         except Exception as e:
+#             db.session.rollback()
+#             return {"status": "error", "message": "Failed to update item quantity"}, 500
+
+#         return {"status": "success", "message": "Item quantity updated", "cart_item": cart_item.to_dict()}, 200
+
+# class RemoveItemFromCartResource(Resource):
+#     def delete(self, user_id, animal_id):
+#         """
+#         Remove an item from the user's cart and restore available_quantity.
+#         """
+#         # Retrieve the user's cart
+#         cart = Cart.query.filter_by(user_id=user_id).first()
+#         if not cart:
+#             return {"status": "error", "message": "Cart not found"}, 404
+
+#         # Find the cart item to remove
+#         cart_item = CartItem.query.filter_by(cart_id=cart.id, animal_id=animal_id).first()
+#         if not cart_item:
+#             return {"status": "error", "message": "Item not in cart"}, 404
+
+#         # Restore the available_quantity and delete the item from the cart
+#         animal = Animal.query.get(animal_id)
+#         if animal:
+#             animal.available_quantity += cart_item.quantity  # Add quantity back to available_quantity
+
+#         try:
+#             db.session.delete(cart_item)  # Remove item from cart
+#             db.session.commit()  # Commit the transaction
+#         except Exception as e:
+#             db.session.rollback()
+#             return {"status": "error", "message": "Failed to remove item"}, 500
+
+#         return {"status": "success", "message": "Item removed from cart"}, 204
+
+# class CheckoutCartResource(Resource):
+#     def post(self, user_id):
+#         """
+#         Finalize the cart by converting it into an order and clearing the cart.
+#         """
+#         # Retrieve the user's cart
+#         cart = Cart.query.filter_by(user_id=user_id).first()
+#         if not cart or not cart.cart_items:
+#             return {"status": "error", "message": "Cart is empty"}, 400
+
+#         # Calculate the total price of all cart items
+#         total_price = sum(item.animal.price * item.quantity for item in cart.cart_items)
+
+#         # Validate total price
+#         if total_price <= 0:
+#             return {"status": "error", "message": "Total price cannot be zero or negative"}, 400
+
+#         # Create a new order with the calculated total price
+#         order = Orders(user_id=user_id, total_price=total_price, created_at=datetime.utcnow())
+#         db.session.add(order)
+
+#         # Transfer each item to the order and clear the cart
+#         for cart_item in cart.cart_items:
+#             cart_item.order = order  # Associate item with order
+#             db.session.delete(cart_item)  # Remove item from cart
+
+#         try:
+#             db.session.commit()  # Commit the transaction
+#         except Exception as e:
+#             db.session.rollback()
+#             return {"status": "error", "message": "Checkout failed"}, 500
+
+#         return {"status": "success", "message": "Checkout complete", "order": order.to_dict()}, 200
+# class CartItemsResource(Resource):
+#     def get(self, user_id):
+#         """
+#         Retrieve paginated items from the user's cart.
+#         Supports 'page' and 'per_page' query parameters.
+#         """
+#         # Retrieve the user's cart
+#         cart = Cart.query.filter_by(user_id=user_id).first()
+#         if not cart:
+#             return {"status": "error", "message": "Cart not found"}, 404
+
+#         # Get pagination parameters from the request
+#         page = request.args.get('page', 1, type=int)
+#         per_page = request.args.get('per_page', 10, type=int)
+#         per_page = min(per_page, 100)  # Limit to a maximum of 100 items per page
+
+#         # Paginate the cart items query
+#         cart_items_query = CartItem.query.filter_by(cart_id=cart.id)
+#         cart_items = cart_items_query.paginate(page, per_page, False)
+
+#         # Serialize paginated items
+#         items_data = [item.to_dict() for item in cart_items.items]
+#         return {
+#             "status": "success",
+#             "cart_items": items_data,
+#             "total_items": cart_items.total,
+#             "total_pages": cart_items.pages,
+#             "current_page": cart_items.page
+#         }, 200
+    
+class CartResource(Resource): 
     def serialize_datetime(self, obj):
         """
         Serializes datetime objects into string format.
@@ -458,14 +694,14 @@ class CartResource(Resource):
         Retrieve the user's cart details by user ID.
         If the cart doesn't exist, return a 404 error.
         """
-        # Find or create a cart associated with the given user_id
         cart = Cart.query.filter_by(user_id=user_id).first()
+
         if not cart:
             cart = Cart(user_id=user_id)
             db.session.add(cart)
             db.session.commit()
 
-        # Get cart items with animal names
+        # Get cart items with animal details
         cart_items = []
         for cart_item in cart.cart_items:
             animal = db.session.get(Animal, cart_item.animal_id)
@@ -475,24 +711,32 @@ class CartResource(Resource):
                     "cart_id": cart_item.cart_id,
                     "animal_id": cart_item.animal_id,
                     "quantity": cart_item.quantity,
-                    "added_at": self.serialize_datetime(cart_item.added_at),  # Serialize datetime
-                    "animal_name": animal.name  # Add the animal name to the cart item
+                    "added_at": self.serialize_datetime(cart_item.added_at),
+                    "animal_name": animal.name,
+                    "animal_price": animal.price,  # Adding animal price to the cart item
+                    "animal_image_url": animal.image_url,  # Adding animal image URL to the cart item
                 })
 
-        # Return the cart details along with animal names
+        # Ensure that the total price calculation is correct, even when there are no cart items
+        total_price = sum(item['animal_price'] * item['quantity'] for item in cart_items)
+
         response = {
             "status": "success",
             "cart": {
                 "id": cart.id,
                 "user_id": cart.user_id,
-                "created_at": self.serialize_datetime(cart.created_at),  # Serialize datetime
-                "cart_items": cart_items
+                "created_at": self.serialize_datetime(cart.created_at),
+                "updated_at": self.serialize_datetime(cart.updated_at) if cart.updated_at else None,
+                "total_price": total_price,  # Correctly calculate total price
+                "cart_items": cart_items  # Empty array if no items in cart
             }
         }
 
-        # Use jsonify to automatically convert the response to JSON
+        # Debugging: Log the response object to verify its structure (remove in production)
+        print(f"Response data for user {user_id}: {response}")
+        
         return jsonify(response)
-
+    
 class AddItemToCartResource(Resource):
     def post(self, user_id):
         """
@@ -516,9 +760,9 @@ class AddItemToCartResource(Resource):
         if not animal:
             return {"status": "error", "message": "Animal not found"}, 404
 
-        # Check if the requested quantity exceeds available available_quantity
+        # Check if the requested quantity exceeds available_quantity
         if animal.available_quantity < quantity:
-            return {"status": "error", "message": "Not enough available_quantity available"}, 400
+            return {"status": "error", "message": "Not enough available quantity available"}, 400
 
         # Check if the animal is already in the cart
         cart_item = CartItem.query.filter_by(cart_id=cart.id, animal_id=animal_id).first()
@@ -542,7 +786,7 @@ class AddItemToCartResource(Resource):
         return {
             "status": "success",
             "message": "Item added to cart",
-            "cart_item": cart_item.to_dict()
+            "cart_item": cart_item.to_dict(include_animal=True)
         }, 201
 
 class UpdateCartItemQuantityResource(Resource):
@@ -569,15 +813,15 @@ class UpdateCartItemQuantityResource(Resource):
         # Check available_quantity availability for the new quantity
         animal = Animal.query.get(animal_id)
         if animal and animal.available_quantity < new_quantity - cart_item.quantity:
-            return {"status": "error", "message": "Not enough available_quantity"}, 400
+            return {"status": "error", "message": "Not enough available quantity"}, 400
 
         # Update item quantity and adjust animal available_quantity
         if animal:
             stock_diff = new_quantity - cart_item.quantity
             if stock_diff > 0:
-                animal.available_quantity -= stock_diff  # Subtract from available_quantity when quantity increases
+                animal.available_quantity -= stock_diff
             elif stock_diff < 0:
-                animal.available_quantity += abs(stock_diff)  # Add to available_quantity when quantity decreases
+                animal.available_quantity += abs(stock_diff)
 
         cart_item.quantity = new_quantity
         try:
@@ -586,12 +830,16 @@ class UpdateCartItemQuantityResource(Resource):
             db.session.rollback()
             return {"status": "error", "message": "Failed to update item quantity"}, 500
 
-        return {"status": "success", "message": "Item quantity updated", "cart_item": cart_item.to_dict()}, 200
+        return {
+            "status": "success",
+            "message": "Item quantity updated",
+            "cart_item": cart_item.to_dict(include_animal=True)
+        }, 200
 
 class RemoveItemFromCartResource(Resource):
     def delete(self, user_id, animal_id):
         """
-        Remove an item from the user's cart and restore available_quantity.
+        Remove an item from the user's cart and restore the available_quantity.
         """
         # Retrieve the user's cart
         cart = Cart.query.filter_by(user_id=user_id).first()
@@ -603,17 +851,19 @@ class RemoveItemFromCartResource(Resource):
         if not cart_item:
             return {"status": "error", "message": "Item not in cart"}, 404
 
-        # Restore the available_quantity and delete the item from the cart
+        # Restore the available_quantity of the animal
         animal = Animal.query.get(animal_id)
         if animal:
-            animal.available_quantity += cart_item.quantity  # Add quantity back to available_quantity
+            animal.available_quantity += cart_item.quantity
+        else:
+            return {"status": "error", "message": "Animal not found"}, 404
 
         try:
-            db.session.delete(cart_item)  # Remove item from cart
-            db.session.commit()  # Commit the transaction
+            db.session.delete(cart_item)  # Delete the cart item
+            db.session.commit()  # Commit the changes
         except Exception as e:
             db.session.rollback()
-            return {"status": "error", "message": "Failed to remove item"}, 500
+            return {"status": "error", "message": "Failed to remove item from cart"}, 500
 
         return {"status": "success", "message": "Item removed from cart"}, 204
 
@@ -640,47 +890,30 @@ class CheckoutCartResource(Resource):
 
         # Transfer each item to the order and clear the cart
         for cart_item in cart.cart_items:
-            cart_item.order = order  # Associate item with order
-            db.session.delete(cart_item)  # Remove item from cart
+            cart_item.order = order  # Associate each cart item with the new order
+            db.session.delete(cart_item)  # Remove items from the cart
 
         try:
-            db.session.commit()  # Commit the transaction
+            db.session.commit()  # Commit the order and cart changes
         except Exception as e:
             db.session.rollback()
             return {"status": "error", "message": "Checkout failed"}, 500
 
-        return {"status": "success", "message": "Checkout complete", "order": order.to_dict()}, 200
-class CartItemsResource(Resource):
-    def get(self, user_id):
-        """
-        Retrieve paginated items from the user's cart.
-        Supports 'page' and 'per_page' query parameters.
-        """
-        # Retrieve the user's cart
-        cart = Cart.query.filter_by(user_id=user_id).first()
-        if not cart:
-            return {"status": "error", "message": "Cart not found"}, 404
-
-        # Get pagination parameters from the request
-        page = request.args.get('page', 1, type=int)
-        per_page = request.args.get('per_page', 10, type=int)
-        per_page = min(per_page, 100)  # Limit to a maximum of 100 items per page
-
-        # Paginate the cart items query
-        cart_items_query = CartItem.query.filter_by(cart_id=cart.id)
-        cart_items = cart_items_query.paginate(page, per_page, False)
-
-        # Serialize paginated items
-        items_data = [item.to_dict() for item in cart_items.items]
         return {
             "status": "success",
-            "cart_items": items_data,
-            "total_items": cart_items.total,
-            "total_pages": cart_items.pages,
-            "current_page": cart_items.page
-        }, 200
-    
+            "message": "Checkout successful",
+            "order_id": order.id,
+            "total_price": total_price
+        }, 201
 
+@app.route('/cart/<int:cart_id>', methods=['GET'])
+def get_cart(cart_id):
+    """
+    Get cart by ID (useful if you need to access a specific cart, 
+    e.g., for admin or debugging purposes).
+    """
+    cart = Cart.query.get_or_404(cart_id)
+    return jsonify(cart.to_dict())
     
 # Register the resource with the API
 api.add_resource(UploadImage, '/upload')
@@ -691,9 +924,10 @@ api.add_resource(OrdersResource, '/orders', '/orders/<int:order_id>')
 api.add_resource(OrderItemResource, '/orderitems', '/orderitems/<int:order_item_id>')
 api.add_resource(PaymentResource, '/payments', '/payments/<int:payment_id>')
 api.add_resource(CartResource, '/cart/<int:user_id>')
-api.add_resource(AddItemToCartResource, '/cart/<int:user_id>/items')
-api.add_resource(UpdateCartItemQuantityResource, '/cart/<int:user_id>/items/<int:animal_id>')
-api.add_resource(RemoveItemFromCartResource, '/cart/<int:user_id>/items/<int:animal_id>')
+api.add_resource(AddItemToCartResource, '/cart/<int:user_id>/add')
+api.add_resource(UpdateCartItemQuantityResource, '/cart/<int:user_id>/update/<int:animal_id>')
+api.add_resource(RemoveItemFromCartResource, '/cart/<int:user_id>/remove/<int:animal_id>')
+api.add_resource(CheckoutCartResource, '/cart/<int:user_id>/checkout')
 api.add_resource(CategoryResource, '/categories')
 api.add_resource(BreedResource, '/breeds')
 
