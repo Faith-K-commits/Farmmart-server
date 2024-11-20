@@ -14,6 +14,10 @@ sqlalchemy-serializer = "*"
 gunicorn = "*"
 psycopg2-binary = "*"
 load-dotenv = "*"
+cloudinary = "*"
+flask-login = "*"
+jwt = "*"
+pyjwt = "*"
 
 [dev-packages]
 
