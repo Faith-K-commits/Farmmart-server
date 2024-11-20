@@ -18,6 +18,7 @@ def config():
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///database.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'secret_key'
 db = SQLAlchemy()
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
