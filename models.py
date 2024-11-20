@@ -1,5 +1,5 @@
 from sqlalchemy_serializer import SerializerMixin
-from config import db, bcrypt
+from extensions import db, bcrypt
 from sqlalchemy.orm import relationship
 from sqlalchemy import CheckConstraint
 from datetime import datetime
