@@ -879,6 +879,148 @@ def get_cart(cart_id):
     cart = Cart.query.get_or_404(cart_id)
     return jsonify(cart.to_dict())
     
+#Vendor Animal management Resources
+#Allows vendors to add new animals
+class VendorAnimalsResource(Resource):
+    def post(self):
+        """Add a new animal for the authenticated vendor."""
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or " " not in auth_header:
+            return {"error": "Authorization header missing or malformed"}, 401
+
+        token = auth_header.split(" ")[1]
+        try:
+            decoded_token = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return {"error": "Token has expired"}, 401
+        except jwt.InvalidTokenError:
+            return {"error": "Invalid token"}, 401
+
+        vendor = db.session.get(BaseUser, decoded_token.get("id"))
+        if not vendor or vendor.role != "vendor":
+            return {"error": "Unauthorized access"}, 401
+
+        # Parse animal data
+        data = request.form.to_dict()
+        data['user_id'] = vendor.id  # Ensure this matches the model definition
+
+        # Handle image upload
+        if 'file' in request.files:
+            file = request.files['file']
+            if file.filename:
+                result = cloudinary.uploader.upload(file)
+                data['image_url'] = result['secure_url']
+
+        # Validate and create animal
+        try:
+            # Use only valid fields from the Animal model
+            valid_keys = [column.key for column in Animal.__table__.columns]
+            filtered_data = {key: value for key, value in data.items() if key in valid_keys}
+
+            animal = Animal(**filtered_data)
+            db.session.add(animal)
+            db.session.commit()
+            return make_response(jsonify(animal.to_dict()), 201)
+        except Exception as e:
+            db.session.rollback()
+            return make_response(jsonify({"error": str(e)}), 400)
+        
+# Fetches all animals belonging to a specific vendor.
+class VendorAnimalListResource(Resource):
+    def get(self):
+        """Fetch all animals associated with the authenticated vendor."""
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or " " not in auth_header:
+            return {"error": "Authorization header missing or malformed"}, 401
+
+        token = auth_header.split(" ")[1]
+        try:
+            decoded_token = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return {"error": "Token has expired"}, 401
+        except jwt.InvalidTokenError:
+            return {"error": "Invalid token"}, 401
+
+        vendor = BaseUser.query.get(decoded_token.get("id"))
+        if not vendor or vendor.role != "vendor":
+            return {"error": "Unauthorized access"}, 401
+
+        animals = Animal.query.filter_by(user_id=vendor.id).all()
+        animals_data = [animal.to_dict() for animal in animals]
+        return jsonify({"animals": animals_data})
+
+#Allows vendors to update animals they own
+class VendorAnimalUpdateResource(Resource):
+    def patch(self, animal_id):
+        """Update details of an animal owned by the authenticated vendor."""
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or " " not in auth_header:
+            return {"error": "Authorization header missing or malformed"}, 401
+
+        token = auth_header.split(" ")[1]
+        try:
+            decoded_token = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return {"error": "Token has expired"}, 401
+        except jwt.InvalidTokenError:
+            return {"error": "Invalid token"}, 401
+
+        vendor = BaseUser.query.get(decoded_token.get("id"))
+        if not vendor or vendor.role != "vendor":
+            return {"error": "Unauthorized access"}, 401
+
+        animal = Animal.query.get(animal_id)
+        if not animal or animal.user_id != vendor.id:
+            return {"error": "Animal not found or unauthorized"}, 404
+
+        data = request.form.to_dict()
+        if 'file' in request.files:
+            file = request.files['file']
+            if file.filename:
+                result = cloudinary.uploader.upload(file)
+                data['image_url'] = result['secure_url']
+
+        try:
+            for key, value in data.items():
+                setattr(animal, key, value)
+            db.session.commit()
+            return jsonify(animal.to_dict())
+        except Exception as e:
+            db.session.rollback()
+            return {"error": str(e)}, 400
+
+#Allows vendors to delete animals they own
+class VendorAnimalDeleteResource(Resource):
+    def delete(self, animal_id):
+        """Delete an animal owned by the authenticated vendor."""
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or " " not in auth_header:
+            return {"error": "Authorization header missing or malformed"}, 401
+
+        token = auth_header.split(" ")[1]
+        try:
+            decoded_token = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return {"error": "Token has expired"}, 401
+        except jwt.InvalidTokenError:
+            return {"error": "Invalid token"}, 401
+
+        vendor = BaseUser.query.get(decoded_token.get("id"))
+        if not vendor or vendor.role != "vendor":
+            return {"error": "Unauthorized access"}, 401
+
+        animal = Animal.query.get(animal_id)
+        if not animal or animal.user_id != vendor.id:
+            return {"error": "Animal not found or unauthorized"}, 404
+
+        try:
+            db.session.delete(animal)
+            db.session.commit()
+            return {"message": "Animal deleted successfully"}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {"error": str(e)}, 400
+        
 # Register the resource with the API
 api.add_resource(UploadImage, '/upload')
 api.add_resource(AnimalResource, '/animals', '/animals/<int:animal_id>')
@@ -894,6 +1036,11 @@ api.add_resource(RemoveItemFromCartResource, '/cart/<int:user_id>/remove/<int:an
 api.add_resource(CheckoutCartResource, '/cart/<int:user_id>/checkout')
 api.add_resource(CategoryResource, '/categories')
 api.add_resource(BreedResource, '/breeds')
+api.add_resource(VendorAnimalsResource, '/vendor/animals')
+api.add_resource(VendorAnimalListResource, '/vendor/animals/list')
+api.add_resource(VendorAnimalUpdateResource, '/vendor/animals/<int:animal_id>')
+api.add_resource(VendorAnimalDeleteResource, '/vendor/animals/delete/<int:animal_id>')
+
 
 
 
